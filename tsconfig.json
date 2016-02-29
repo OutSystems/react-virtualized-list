@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "module": "amd",
+        "noImplicitAny": true,
+        "removeComments": true,
+        "preserveConstEnums": true,
+        "sourceMap": false,
+		"outDir": "bin",
+		"target": "es5",
+		"jsx": "react",
+        "experimentalDecorators": true
+    }
+}
