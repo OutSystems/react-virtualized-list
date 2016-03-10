@@ -1,5 +1,4 @@
 import * as React from "react";
-import * as ReactDOM from "react-dom";
 import { VirtualizedScrollViewer } from "virtualized-scroll-viewer";
 
 export interface IVirtualizedListProperties {

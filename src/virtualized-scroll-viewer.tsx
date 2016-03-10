@@ -9,14 +9,13 @@ const RESIZE_EVENT_NAME = "resize";
 export interface IVirtualizedScrollViewerProperties {
     length: number;
     renderItem: (index: number) => JSX.Element;
+    verticalScrollVirtualization?: boolean;
 }
 
 interface IScrollInfo {
     scrollHost: HTMLElement | Window;
-    viewportHeight: number;
-    viewportWidth: number;
-    scrollY: number;
-    scrollX: number;
+    viewportSize: number;
+    scrollDelta: number;
 }
 
 @ComponentWithPreRender
@@ -24,6 +23,7 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
     
     private scrollHandler: () => void;
     private scrollHost: HTMLElement | Window;
+    private updateQueued = false;
     
     constructor(props: IVirtualizedScrollViewerProperties, context: any) {
         super(props, context);
@@ -48,22 +48,16 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
         let scrollHost = this.getScrollHost();
         let scrollInfo: IScrollInfo = {
             scrollHost: scrollHost,
-            scrollY: 0,
-            scrollX: 0,
-            viewportHeight: 0,
-            viewportWidth: 0
+            scrollDelta: 0,
+            viewportSize: 0,
         };
         
         if (scrollHost instanceof Window) {
-            scrollInfo.scrollX = scrollHost.scrollX;
-            scrollInfo.scrollY = scrollHost.scrollY;
-            scrollInfo.viewportHeight = scrollHost.innerHeight;
-            scrollInfo.viewportWidth = scrollHost.innerWidth;
+            scrollInfo.scrollDelta = this.getDimension(scrollHost.scrollY, scrollHost.scrollX);
+            scrollInfo.viewportSize = this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth);
         } else if (scrollHost instanceof HTMLElement) {
-            scrollInfo.scrollX = scrollHost.scrollLeft;
-            scrollInfo.scrollY = scrollHost.scrollTop;
-            scrollInfo.viewportHeight = scrollHost.clientHeight;
-            scrollInfo.viewportWidth = scrollHost.clientWidth;
+            scrollInfo.scrollDelta = this.getDimension(scrollHost.scrollTop, scrollHost.scrollLeft);
+            scrollInfo.viewportSize = this.getDimension(scrollHost.clientHeight, scrollHost.clientWidth);
         }
 
         return scrollInfo;
@@ -94,17 +88,34 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
     }
     
     private handleScroll() {
-        requestAnimationFrame(() => this.forceUpdate());
+        if(this.updateQueued) {
+            return; // an update already queued, skip
+        }
+        this.updateQueued = true;
+        requestAnimationFrame(() => {
+            this.forceUpdate()
+            this.updateQueued = false;
+        });
     }
     
-    private renderList(firstItemVisible: number, numberOfVisibleItems: number, scrollY: number = 0, height: number = NaN) {
+    private renderList(firstItemVisible: number, numberOfVisibleItems: number, scrollDelta: number = 0, size: number = NaN) {
         let items: JSX.Element[] = [];
         let length = Math.min(this.props.length, firstItemVisible + numberOfVisibleItems);
         for (let i = firstItemVisible; i < length; i++) {
             items.push(this.props.renderItem(i));
         }
+        
+        size = isNaN(size) ? undefined : size - scrollDelta;
+        
+        let style: React.CSSProperties = {
+            paddingTop: this.getDimension(scrollDelta, undefined),
+            paddingLeft: this.getDimension(undefined, scrollDelta),
+            height: this.getDimension(size, undefined),
+            width: this.getDimension(undefined, size) 
+        };
+         
         return (
-            <div style={{paddingTop: scrollY, height: isNaN(height) ? undefined : height - scrollY}}>
+            <div style={style}>
                 {items}
             </div>);
     }
@@ -121,19 +132,25 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
         let scrollInfo = this.getScrollInfo();
         let scrollViewerElement: HTMLElement = ReactDOM.findDOMNode(this) as HTMLElement;
         let listItemElement = scrollViewerElement.firstElementChild; // get first list item
-        let listItemHeight = Math.max(1, listItemElement.getBoundingClientRect().height);
-        let numberOfVisibleItems = Math.ceil(scrollInfo.viewportHeight / listItemHeight) + 1;
+        let listItemElementBounds = listItemElement.getBoundingClientRect(); 
+        let listItemDimension = Math.max(1, this.getDimension(listItemElementBounds.height, listItemElementBounds.width));
+        let numberOfVisibleItems = Math.ceil(scrollInfo.viewportSize / listItemDimension) + 1;
         
-        let scrollY: number;
+        let scrollDelta: number;
         let scrollViewerParentElement = scrollViewerElement.parentElement;
         if (scrollInfo.scrollHost === scrollViewerParentElement) {
-            scrollY = scrollInfo.scrollY;
+            scrollDelta = scrollInfo.scrollDelta;
         } else {
-            scrollY = Math.max(0, -scrollViewerParentElement.getBoundingClientRect().top);
+            let scrollViewerParentBounds = scrollViewerParentElement.getBoundingClientRect();
+            scrollDelta = Math.max(0, - this.getDimension(scrollViewerParentBounds.top, scrollViewerParentBounds.left));
         }
-        let firstItemVisible = Math.floor(scrollY / listItemHeight);
-        scrollY = scrollY - (scrollY  % listItemHeight);
+        let firstItemVisible = Math.floor(scrollDelta / listItemDimension);
+        scrollDelta = scrollDelta - (scrollDelta  % listItemDimension);
 
-        return this.renderList(firstItemVisible, numberOfVisibleItems, scrollY, listItemHeight * this.props.length);
+        return this.renderList(firstItemVisible, numberOfVisibleItems, scrollDelta, listItemDimension * this.props.length);
+    }
+    
+    private getDimension(vertical: number, horizontal: number) {
+        return (this.props.verticalScrollVirtualization === undefined || this.props.verticalScrollVirtualization) ? vertical : horizontal;
     }
 }

@@ -16,6 +16,7 @@ define(["require", "exports", "react", "react-dom", "extensions", "component-wit
         __extends(VirtualizedScrollViewer, _super);
         function VirtualizedScrollViewer(props, context) {
             _super.call(this, props, context);
+            this.updateQueued = false;
             this.scrollHandler = this.handleScroll.bind(this);
         }
         VirtualizedScrollViewer.prototype.getScrollHost = function () {
@@ -28,22 +29,16 @@ define(["require", "exports", "react", "react-dom", "extensions", "component-wit
             var scrollHost = this.getScrollHost();
             var scrollInfo = {
                 scrollHost: scrollHost,
-                scrollY: 0,
-                scrollX: 0,
-                viewportHeight: 0,
-                viewportWidth: 0
+                scrollDelta: 0,
+                viewportSize: 0,
             };
             if (scrollHost instanceof Window) {
-                scrollInfo.scrollX = scrollHost.scrollX;
-                scrollInfo.scrollY = scrollHost.scrollY;
-                scrollInfo.viewportHeight = scrollHost.innerHeight;
-                scrollInfo.viewportWidth = scrollHost.innerWidth;
+                scrollInfo.scrollDelta = this.getDimension(scrollHost.scrollY, scrollHost.scrollX);
+                scrollInfo.viewportSize = this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth);
             }
             else if (scrollHost instanceof HTMLElement) {
-                scrollInfo.scrollX = scrollHost.scrollLeft;
-                scrollInfo.scrollY = scrollHost.scrollTop;
-                scrollInfo.viewportHeight = scrollHost.clientHeight;
-                scrollInfo.viewportWidth = scrollHost.clientWidth;
+                scrollInfo.scrollDelta = this.getDimension(scrollHost.scrollTop, scrollHost.scrollLeft);
+                scrollInfo.viewportSize = this.getDimension(scrollHost.clientHeight, scrollHost.clientWidth);
             }
             return scrollInfo;
         };
@@ -66,17 +61,31 @@ define(["require", "exports", "react", "react-dom", "extensions", "component-wit
         };
         VirtualizedScrollViewer.prototype.handleScroll = function () {
             var _this = this;
-            requestAnimationFrame(function () { return _this.forceUpdate(); });
+            if (this.updateQueued) {
+                return;
+            }
+            this.updateQueued = true;
+            requestAnimationFrame(function () {
+                _this.forceUpdate();
+                _this.updateQueued = false;
+            });
         };
-        VirtualizedScrollViewer.prototype.renderList = function (firstItemVisible, numberOfVisibleItems, scrollY, height) {
-            if (scrollY === void 0) { scrollY = 0; }
-            if (height === void 0) { height = NaN; }
+        VirtualizedScrollViewer.prototype.renderList = function (firstItemVisible, numberOfVisibleItems, scrollDelta, size) {
+            if (scrollDelta === void 0) { scrollDelta = 0; }
+            if (size === void 0) { size = NaN; }
             var items = [];
             var length = Math.min(this.props.length, firstItemVisible + numberOfVisibleItems);
             for (var i = firstItemVisible; i < length; i++) {
                 items.push(this.props.renderItem(i));
             }
-            return (React.createElement("div", {"style": { paddingTop: scrollY, height: isNaN(height) ? undefined : height - scrollY }}, items));
+            size = isNaN(size) ? undefined : size - scrollDelta;
+            var style = {
+                paddingTop: this.getDimension(scrollDelta, undefined),
+                paddingLeft: this.getDimension(undefined, scrollDelta),
+                height: this.getDimension(size, undefined),
+                width: this.getDimension(undefined, size)
+            };
+            return (React.createElement("div", {"style": style}, items));
         };
         VirtualizedScrollViewer.prototype.preRender = function () {
             return this.renderList(0, 1);
@@ -88,19 +97,24 @@ define(["require", "exports", "react", "react-dom", "extensions", "component-wit
             var scrollInfo = this.getScrollInfo();
             var scrollViewerElement = ReactDOM.findDOMNode(this);
             var listItemElement = scrollViewerElement.firstElementChild;
-            var listItemHeight = Math.max(1, listItemElement.getBoundingClientRect().height);
-            var numberOfVisibleItems = Math.ceil(scrollInfo.viewportHeight / listItemHeight) + 1;
-            var scrollY;
+            var listItemElementBounds = listItemElement.getBoundingClientRect();
+            var listItemDimension = Math.max(1, this.getDimension(listItemElementBounds.height, listItemElementBounds.width));
+            var numberOfVisibleItems = Math.ceil(scrollInfo.viewportSize / listItemDimension) + 1;
+            var scrollDelta;
             var scrollViewerParentElement = scrollViewerElement.parentElement;
             if (scrollInfo.scrollHost === scrollViewerParentElement) {
-                scrollY = scrollInfo.scrollY;
+                scrollDelta = scrollInfo.scrollDelta;
             }
             else {
-                scrollY = Math.max(0, -scrollViewerParentElement.getBoundingClientRect().top);
+                var scrollViewerParentBounds = scrollViewerParentElement.getBoundingClientRect();
+                scrollDelta = Math.max(0, -this.getDimension(scrollViewerParentBounds.top, scrollViewerParentBounds.left));
             }
-            var firstItemVisible = Math.floor(scrollY / listItemHeight);
-            scrollY = scrollY - (scrollY % listItemHeight);
-            return this.renderList(firstItemVisible, numberOfVisibleItems, scrollY, listItemHeight * this.props.length);
+            var firstItemVisible = Math.floor(scrollDelta / listItemDimension);
+            scrollDelta = scrollDelta - (scrollDelta % listItemDimension);
+            return this.renderList(firstItemVisible, numberOfVisibleItems, scrollDelta, listItemDimension * this.props.length);
+        };
+        VirtualizedScrollViewer.prototype.getDimension = function (vertical, horizontal) {
+            return (this.props.verticalScrollVirtualization === undefined || this.props.verticalScrollVirtualization) ? vertical : horizontal;
         };
         VirtualizedScrollViewer = __decorate([
             component_with_prerender_1.ComponentWithPreRender
