@@ -4,16 +4,16 @@ export interface IComponentWithPreRender extends React.Component<any, any> {
     preRender(): React.ReactElement<any>;    
 }
 
-export function ComponentWithPreRender(component: typeof React.Component) {
+export function ComponentWithPreRender(component: typeof React.Component): void {
     let originalRenderMethod = component.prototype.render;
-    let preRenderExecuted = false;
-    component.prototype.render = function() {
-        if (preRenderExecuted) {
+    (<any> component.prototype).preRenderExecuted = false;
+    component.prototype.render = function (): React.DOMElement<any> {
+        if (this.preRenderExecuted) {
             return originalRenderMethod.call(this, arguments);
         }
-        
-        let result = (component.prototype as IComponentWithPreRender).preRender.call(this, arguments);
-        preRenderExecuted = true;
+
+        let result = (<IComponentWithPreRender> component.prototype).preRender.call(this, arguments);
+        this.preRenderExecuted = true;
         component.prototype.forceUpdate.call(this);
         return result;
     };

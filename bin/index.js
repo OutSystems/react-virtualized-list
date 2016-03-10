@@ -20,3 +20,4 @@ define(["require", "exports", "react", "react-dom", "virtualized-list"], functio
     })(React.Component);
     ReactDOM.render(React.createElement(App), document.getElementById("container"));
 });
+//# sourceMappingURL=index.js.map
