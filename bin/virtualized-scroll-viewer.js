@@ -29,15 +29,15 @@ define(["require", "exports", "react", "react-dom", "extensions", "component-wit
             var scrollHost = this.getScrollHost();
             var scrollInfo = {
                 scrollHost: scrollHost,
-                scrollDelta: 0,
+                scrollOffset: 0,
                 viewportSize: 0,
             };
             if (scrollHost instanceof Window) {
-                scrollInfo.scrollDelta = this.getDimension(scrollHost.scrollY, scrollHost.scrollX);
+                scrollInfo.scrollOffset = this.getDimension(scrollHost.scrollY, scrollHost.scrollX);
                 scrollInfo.viewportSize = this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth);
             }
             else if (scrollHost instanceof HTMLElement) {
-                scrollInfo.scrollDelta = this.getDimension(scrollHost.scrollTop, scrollHost.scrollLeft);
+                scrollInfo.scrollOffset = this.getDimension(scrollHost.scrollTop, scrollHost.scrollLeft);
                 scrollInfo.viewportSize = this.getDimension(scrollHost.clientHeight, scrollHost.clientWidth);
             }
             return scrollInfo;
@@ -70,20 +70,20 @@ define(["require", "exports", "react", "react-dom", "extensions", "component-wit
                 _this.updateQueued = false;
             });
         };
-        VirtualizedScrollViewer.prototype.renderList = function (firstItemVisible, numberOfVisibleItems, scrollDelta, size) {
-            if (scrollDelta === void 0) { scrollDelta = 0; }
+        VirtualizedScrollViewer.prototype.renderList = function (firstItemVisible, numberOfVisibleItems, scrollOffset, size) {
+            if (scrollOffset === void 0) { scrollOffset = 0; }
             if (size === void 0) { size = NaN; }
             var items = [];
             var length = Math.min(this.props.length, firstItemVisible + numberOfVisibleItems);
             for (var i = firstItemVisible; i < length; i++) {
                 items.push(this.props.renderItem(i));
             }
-            size = isNaN(size) ? undefined : size - scrollDelta;
+            size = isNaN(size) ? undefined : size - scrollOffset;
             var style = {
-                paddingTop: this.getDimension(scrollDelta, undefined),
-                paddingLeft: this.getDimension(undefined, scrollDelta),
-                height: this.getDimension(size, undefined),
-                width: this.getDimension(undefined, size)
+                paddingTop: this.getDimension(scrollOffset, undefined),
+                paddingLeft: this.getDimension(undefined, scrollOffset),
+                minHeight: this.getDimension(size, undefined),
+                minWidth: this.getDimension(undefined, size)
             };
             return (React.createElement("div", {"style": style}, items));
         };
@@ -100,21 +100,21 @@ define(["require", "exports", "react", "react-dom", "extensions", "component-wit
             var listItemElementBounds = listItemElement.getBoundingClientRect();
             var listItemDimension = Math.max(1, this.getDimension(listItemElementBounds.height, listItemElementBounds.width));
             var numberOfVisibleItems = Math.ceil(scrollInfo.viewportSize / listItemDimension) + 1;
-            var scrollDelta;
+            var scrollOffset;
             var scrollViewerParentElement = scrollViewerElement.parentElement;
             if (scrollInfo.scrollHost === scrollViewerParentElement) {
-                scrollDelta = scrollInfo.scrollDelta;
+                scrollOffset = scrollInfo.scrollOffset;
             }
             else {
                 var scrollViewerParentBounds = scrollViewerParentElement.getBoundingClientRect();
-                scrollDelta = Math.max(0, -this.getDimension(scrollViewerParentBounds.top, scrollViewerParentBounds.left));
+                scrollOffset = Math.max(0, -this.getDimension(scrollViewerParentBounds.top, scrollViewerParentBounds.left));
             }
-            var firstItemVisible = Math.floor(scrollDelta / listItemDimension);
-            scrollDelta = scrollDelta - (scrollDelta % listItemDimension);
-            return this.renderList(firstItemVisible, numberOfVisibleItems, scrollDelta, listItemDimension * this.props.length);
+            var firstItemVisible = Math.floor(scrollOffset / listItemDimension);
+            scrollOffset = scrollOffset - (scrollOffset % listItemDimension);
+            return this.renderList(firstItemVisible, numberOfVisibleItems, scrollOffset, listItemDimension * this.props.length);
         };
         VirtualizedScrollViewer.prototype.getDimension = function (vertical, horizontal) {
-            return (this.props.verticalScrollVirtualization === undefined || this.props.verticalScrollVirtualization) ? vertical : horizontal;
+            return this.props.verticalScrollVirtualization !== false ? vertical : horizontal;
         };
         VirtualizedScrollViewer = __decorate([
             component_with_prerender_1.ComponentWithPreRender
