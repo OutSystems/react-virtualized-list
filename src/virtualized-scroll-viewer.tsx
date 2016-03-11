@@ -108,8 +108,7 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
         size = isNaN(size) ? undefined : size - scrollOffset;
         
         let style: React.CSSProperties = {
-            paddingTop: this.getDimension(scrollOffset, undefined),
-            paddingLeft: this.getDimension(undefined, scrollOffset),
+            transform: "translate(" + this.getDimension(0, scrollOffset) + "px," + this.getDimension(scrollOffset, 0) +"px)", // gpu accelerated
             minHeight: this.getDimension(size, undefined),
             minWidth: this.getDimension(undefined, size) 
         };
