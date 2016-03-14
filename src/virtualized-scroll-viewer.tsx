@@ -5,6 +5,7 @@ import { ComponentWithPreRender, IComponentWithPreRender } from "component-with-
 
 const SCROLL_EVENT_NAME = "scroll";
 const RESIZE_EVENT_NAME = "resize";
+const PIXEL_UNITS = "px";
 
 export interface IVirtualizedScrollViewerProperties {
     length: number;
@@ -16,6 +17,8 @@ interface IScrollInfo {
     scrollHost: HTMLElement | Window;
     viewportSize: number;
     scrollOffset: number;
+    viewportLowerBound: number;
+    viewportUpperBound: number;
 }
 
 @ComponentWithPreRender
@@ -46,18 +49,25 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
      */
     private getScrollInfo(): IScrollInfo {
         let scrollHost = this.getScrollHost();
-        let scrollInfo: IScrollInfo = {
-            scrollHost: scrollHost,
-            scrollOffset: 0,
-            viewportSize: 0,
-        };
+        let scrollInfo: IScrollInfo;
         
         if (scrollHost instanceof Window) {
-            scrollInfo.scrollOffset = this.getDimension(scrollHost.scrollY, scrollHost.scrollX);
-            scrollInfo.viewportSize = this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth);
+            scrollInfo = {
+                scrollHost: scrollHost,
+                scrollOffset: this.getDimension(scrollHost.scrollY, scrollHost.scrollX),
+                viewportSize: this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth),
+                viewportLowerBound: this.getDimension(0, 0),
+                viewportUpperBound: this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth)
+            };
         } else if (scrollHost instanceof HTMLElement) {
-            scrollInfo.scrollOffset = this.getDimension(scrollHost.scrollTop, scrollHost.scrollLeft);
-            scrollInfo.viewportSize = this.getDimension(scrollHost.clientHeight, scrollHost.clientWidth);
+            let bounds = scrollHost.getBoundingClientRect();
+            scrollInfo = {
+                scrollHost: scrollHost,
+                scrollOffset: this.getDimension(scrollHost.scrollTop, scrollHost.scrollLeft),
+                viewportSize: this.getDimension(scrollHost.clientHeight, scrollHost.clientWidth),
+                viewportLowerBound: this.getDimension(bounds.top, bounds.left),
+                viewportUpperBound: this.getDimension(bounds.bottom, bounds.right)
+            };
         }
 
         return scrollInfo;
@@ -82,6 +92,10 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
         this.addScrollHandler();
     }
     
+    public componentDidUpdate() {
+        
+    }
+    
     public componentWillUnmount() {
         this.removeScrollHandler();
         this.scrollHost = null;
@@ -93,22 +107,24 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
         }
         this.updateQueued = true;
         requestAnimationFrame(() => {
-            this.forceUpdate()
+            this.forceUpdate();
             this.updateQueued = false;
         });
     }
     
-    private renderList(firstItemVisible: number, numberOfVisibleItems: number, scrollOffset: number = 0, size: number = NaN) {
+    private renderList(firstItemVisibleIndex: number, lastVisibleItemIndex: number, scrollOffset: number = 0, size: number = NaN) {
         let items: JSX.Element[] = [];
-        let length = Math.min(this.props.length, firstItemVisible + numberOfVisibleItems);
-        for (let i = firstItemVisible; i < length; i++) {
+        let length = Math.min(this.props.length, lastVisibleItemIndex + 1);
+        for (let i = firstItemVisibleIndex; i < length; i++) {
             items.push(this.props.renderItem(i));
         }
         
         size = isNaN(size) ? undefined : size - scrollOffset;
         
         let style: React.CSSProperties = {
-            transform: "translate(" + this.getDimension(0, scrollOffset) + "px," + this.getDimension(scrollOffset, 0) +"px)", // gpu accelerated
+            transform: "translate(" + this.getDimension(0, scrollOffset) + PIXEL_UNITS + "," + this.getDimension(scrollOffset, 0) + PIXEL_UNITS + ")", // gpu accelerated
+            //paddingTop: this.getDimension(-scrollOffset, 0) + PIXEL_UNITS,
+            //paddingLeft: this.getDimension(0, -scrollOffset) + PIXEL_UNITS,
             minHeight: this.getDimension(size, undefined),
             minWidth: this.getDimension(undefined, size) 
         };
@@ -124,32 +140,102 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
         return this.renderList(0, 1);
     }
     
+    private scrollOffset: number = 0;
+    private firstVisibleItemIndex: number = 0;
+    
     public render() {
         if (this.props.length === 0) {
             return this.renderList(0, 0);
         }
+       
         let scrollInfo = this.getScrollInfo();
         let scrollViewerElement: HTMLElement = ReactDOM.findDOMNode(this) as HTMLElement;
-        let listItemElement = scrollViewerElement.firstElementChild; // get first list item
-        let listItemElementBounds = listItemElement.getBoundingClientRect(); 
-        let listItemDimension = Math.max(1, this.getDimension(listItemElementBounds.height, listItemElementBounds.width));
-        let numberOfVisibleItems = Math.ceil(scrollInfo.viewportSize / listItemDimension) + 1;
+        
+        let visibleItemsIndexes = this.getVisibleItemIndexes(scrollInfo, scrollViewerElement);
         
         let scrollOffset: number;
         let scrollViewerParentElement = scrollViewerElement.parentElement;
-        if (scrollInfo.scrollHost === scrollViewerParentElement) {
+        /*if (scrollInfo.scrollHost === scrollViewerParentElement) {
             scrollOffset = scrollInfo.scrollOffset;
         } else {
             let scrollViewerParentBounds = scrollViewerParentElement.getBoundingClientRect();
             scrollOffset = Math.max(0, - this.getDimension(scrollViewerParentBounds.top, scrollViewerParentBounds.left));
-        }
-        let firstItemVisible = Math.floor(scrollOffset / listItemDimension);
-        scrollOffset = scrollOffset - (scrollOffset  % listItemDimension);
-
-        return this.renderList(firstItemVisible, numberOfVisibleItems, scrollOffset, listItemDimension * this.props.length);
+        }*/
+        //scrollOffset = scrollOffset - visibleItemsIndexes.scrollOffset; //this.scrollOffset; // (scrollOffset  % listItemDimension);
+        scrollOffset = visibleItemsIndexes.scrollOffset;
+        
+        this.scrollOffset = scrollOffset; // this.getDimension(listItemElementBounds.top, listItemElementBounds.left);
+        this.firstVisibleItemIndex = visibleItemsIndexes.firstVisibleItemIndex;
+        
+        return this.renderList(visibleItemsIndexes.firstVisibleItemIndex, 
+                               visibleItemsIndexes.lastVisibleItemIndex, 
+                               scrollOffset, 
+                               10000);
     }
     
     private getDimension(vertical: number, horizontal: number) {
         return this.props.verticalScrollVirtualization !== false ? vertical : horizontal;
+    }
+    
+    private getVisibleItemIndexes(scrollInfo: IScrollInfo, scrollViewerElement: HTMLElement) {
+        let viewportSafetyMargin = 0.1 * scrollInfo.viewportSize;
+        let scrollOffset = 0;
+        let sizeAvailableAtBeginning = 0;
+        let sizeAvailableAtEnd = 0;
+        
+         // find the first item index inside viewport with safety margin
+        let firstVisibleItemIndex = 0;
+        let viewportLowerBound = scrollInfo.viewportLowerBound - viewportSafetyMargin;
+        for (let i = 0; i < scrollViewerElement.children.length; i++) {
+            let listItemElement = scrollViewerElement.children[i];
+            let listItemElementBounds = listItemElement.getBoundingClientRect();
+            
+            if (this.getDimension(listItemElementBounds.bottom, listItemElementBounds.right) >= viewportLowerBound) {
+                // item is inside viewport with safety margin
+                
+                // calculate space available for more items at the beginning of the list
+                sizeAvailableAtBeginning = Math.max(0, this.getDimension(listItemElementBounds.top, listItemElementBounds.left) - viewportLowerBound);
+                firstVisibleItemIndex = i;
+                break;
+            } else {
+                //scrollOffset += itemSize; // item is going to be discarded, add its size to the scroll
+            }
+        }
+        
+        // find the last item index inside viewport with safety margin
+        let lastVisibleItemIndex = 0;
+        let viewportUpperBound = scrollInfo.viewportUpperBound + viewportSafetyMargin;
+        for (let i = scrollViewerElement.children.length - 1; i >= 0; i--) {
+            let listItemElement = scrollViewerElement.children[i];
+            let listItemElementBounds = listItemElement.getBoundingClientRect();
+             
+            if (this.getDimension(listItemElementBounds.top, listItemElementBounds.left) <= viewportUpperBound) {
+                // item is outside viewport with safety margin
+                
+                // calculate space available for more items at the end of the list
+                sizeAvailableAtEnd = Math.max(0, viewportUpperBound - this.getDimension(listItemElementBounds.bottom, listItemElementBounds.right));
+                lastVisibleItemIndex = i;
+                break;
+            }
+        }
+        
+        // calculate average item size
+        let firstItemBounds = scrollViewerElement.firstElementChild.getBoundingClientRect();
+        let lastItemBounds = scrollViewerElement.lastElementChild.getBoundingClientRect();
+        let averageItemSize = (this.getDimension(firstItemBounds.bottom, firstItemBounds.right) - this.getDimension(firstItemBounds.top, firstItemBounds.left)) / scrollViewerElement.children.length;  
+        
+        let numberOfItemsThatFitRemainingSpaceAtBeginning = Math.ceil(sizeAvailableAtBeginning / averageItemSize);
+        firstVisibleItemIndex = Math.max(0, this.firstVisibleItemIndex + firstVisibleItemIndex - numberOfItemsThatFitRemainingSpaceAtBeginning);
+        let numberOfItemsThatFitRemainingSpaceAtEnd = Math.ceil(sizeAvailableAtEnd / averageItemSize);
+        lastVisibleItemIndex = Math.max(0, this.firstVisibleItemIndex + lastVisibleItemIndex + numberOfItemsThatFitRemainingSpaceAtEnd);
+        
+        //let viewportSizeWithSafetyMargins = (viewportUpperBound - viewportLowerBound);
+        //let minimumNumberOfVisibleItems = Math.max(3, Math.ceil(viewportSizeWithSafetyMargins / Math.max(minItemSize, 1)));
+        
+        return {
+            firstVisibleItemIndex: firstVisibleItemIndex,
+            lastVisibleItemIndex: lastVisibleItemIndex,
+            scrollOffset: this.scrollOffset + scrollOffset
+        };
     }
 }

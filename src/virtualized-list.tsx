@@ -8,7 +8,8 @@ export interface IVirtualizedListProperties {
 export class VirtualizedList extends React.Component<IVirtualizedListProperties, {}> {
         
     private renderItem(index: number) {
-        return <div className="list-item">Item {this.props.list[index]}</div>;
+        let className = "list-item " + (index % 2 === 0 ? "even" : "odd");
+        return <div className={className}>Item {this.props.list[index]}</div>;
     }
     
     public render() {
