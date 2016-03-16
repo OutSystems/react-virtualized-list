@@ -1,3 +1,8 @@
+// TODO:
+// - auto detect scroll direction
+// - if list size chnages and scroll is over last item, empty space will be shown
+
+
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as Extensions from "extensions";
@@ -6,10 +11,10 @@ const SCROLL_EVENT_NAME = "scroll";
 const RESIZE_EVENT_NAME = "resize";
 const PIXEL_UNITS = "px";
 
-export interface IVirtualizedScrollViewerProperties {
+export interface IScrollViewerProperties {
     length: number;
     renderItem: (index: number) => JSX.Element;
-    verticalScrollVirtualization?: boolean;
+    verticalScrollVirtualization?: boolean; // TODO auto detect
     scrollChanged?: () => void;
 }
 
@@ -28,13 +33,13 @@ interface IScrollViewerState {
     scrollOffset: number
 }
 
-export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollViewerProperties, IScrollViewerState> {
+export class VirtualizedScrollViewer extends React.Component<IScrollViewerProperties, IScrollViewerState> {
     
     private scrollHandler: () => void;
     private scrollHost: HTMLElement | Window;
     private updateQueued = false;
     
-    constructor(props: IVirtualizedScrollViewerProperties, context: any) {
+    constructor(props: IScrollViewerProperties, context: any) {
         super(props, context);
         this.scrollHandler = this.handleScroll.bind(this);
         this.state = {
@@ -102,12 +107,16 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
     
     public componentDidMount(): void {
         this.addScrollHandler();
-        this.setState(this.getCurrentScrollViewerState()); // rerender with the right amount of items in the viewport
+        this.setState(this.getCurrentScrollViewerState(this.props.length)); // rerender with the right amount of items in the viewport
     }
     
     public componentWillUnmount(): void {
         this.removeScrollHandler();
         this.scrollHost = null;
+    }
+    
+    public componentWillReceiveProps(nextProps: IScrollViewerProperties) {
+        this.setState(this.getCurrentScrollViewerState(nextProps.length)); // rerender with the right amount of items in the viewport
     }
     
     private handleScroll(): void {
@@ -118,7 +127,7 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
         
         // delay any updates until render time
         requestAnimationFrame(() => {
-            this.setState(this.getCurrentScrollViewerState());
+            this.setState(this.getCurrentScrollViewerState(this.props.length));
             this.updateQueued = false;
             if (this.props.scrollChanged) {
                 this.props.scrollChanged();
@@ -150,7 +159,6 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
     }
     
     public render(): JSX.Element {
-        // TODO if length changes and scroll is greater, it will crash
         if (this.props.length === 0) {
             return this.renderList(0, 0);
         }
@@ -171,7 +179,7 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
     /**
      * Calculate first and last visible items for the current scroll state, as well as the scroll offset
      */
-    private getCurrentScrollViewerState(): IScrollViewerState {
+    private getCurrentScrollViewerState(listLength: number): IScrollViewerState {
         let scrollInfo = this.getScrollInfo();
         let scrollViewerElement: HTMLElement = ReactDOM.findDOMNode(this) as HTMLElement;
         
@@ -228,14 +236,22 @@ export class VirtualizedScrollViewer extends React.Component<IVirtualizedScrollV
         let numberOfItemsThatFitRemainingSpaceAtEnd = Math.ceil(sizeAvailableAtEnd / averageItemSize);
         lastVisibleItemIndex = Math.max(0, this.state.firstVisibleItemIndex + lastVisibleItemIndex + numberOfItemsThatFitRemainingSpaceAtEnd);
         
-        // calculate scroll compensation for the items removed/added
         let scrollOffset = 0;
-        if (scrollCompensation > 0) {
-            scrollOffset = scrollCompensation; // compensate scroll with height of elements removed
-        } else if (firstVisibleItemIndex < this.state.firstVisibleItemIndex) {
-            scrollOffset = (firstVisibleItemIndex - this.state.firstVisibleItemIndex) * averageItemSize; // compensate scroll with the estimated height of elements inserted
+        
+        if (lastVisibleItemIndex >= listLength) {
+            // number of list items changed, coerce indexes to be within list bounds
+            let numberOfVisibleItems = lastVisibleItemIndex - firstVisibleItemIndex;
+            lastVisibleItemIndex = listLength;
+            firstVisibleItemIndex = Math.max(0, lastVisibleItemIndex - numberOfVisibleItems);
+        } else {
+            // calculate scroll compensation for the items removed/added
+            if (scrollCompensation > 0) {
+                scrollOffset = scrollCompensation; // compensate scroll with height of elements removed
+            } else if (firstVisibleItemIndex < this.state.firstVisibleItemIndex) {
+                scrollOffset = (firstVisibleItemIndex - this.state.firstVisibleItemIndex) * averageItemSize; // compensate scroll with the estimated height of elements inserted
+            }
+            scrollOffset = Math.max(0, this.state.scrollOffset + scrollOffset);
         }
-        scrollOffset = Math.max(0, this.state.scrollOffset + scrollOffset);
         
         return {
             firstVisibleItemIndex: firstVisibleItemIndex,
