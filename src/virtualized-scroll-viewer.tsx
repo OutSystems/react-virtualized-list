@@ -177,8 +177,18 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Calculate first and last visible items for the current scroll state, as well as the scroll offset
      */
     private getCurrentScrollViewerState(listLength: number): IScrollViewerState {
-        let scrollInfo = this.getScrollInfo();
         let scrollViewerElement: HTMLElement = ReactDOM.findDOMNode(this) as HTMLElement;
+        
+        if (scrollViewerElement.firstElementChild && getComputedStyle(scrollViewerElement.firstElementChild).display !== "block") {
+            // disable virtualization if list elements are not block (not supported)
+            return {
+                firstVisibleItemIndex: 0,
+                lastVisibleItemIndex: Math.max(0, this.props.length - 1),
+                averageItemSize: 1,
+                scrollOffset: 0  
+            };
+        }
+        let scrollInfo = this.getScrollInfo();
         
         let viewportAbsolutePosition = 0;
         
