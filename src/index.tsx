@@ -7,7 +7,7 @@ class App extends React.Component<{}, { items: number}> {
     constructor() {
         super();
         this.state = {
-            items: 100
+            items: 1000
         };
     }
     

@@ -2,9 +2,22 @@
 // implementation copied from jquery .scrollParent()
 const OVERFLOW_REGEX: RegExp = /(auto|scroll)/;
 
-export function getScrollHost(element: HTMLElement, excludeStaticParent?: boolean): HTMLElement | Window {
+export enum ScrollDirection {
+    Horizontal,
+    Vertical
+}
+
+export interface IScrollHostInfo {
+    scrollHost: HTMLElement | Window;
+    scrollDirection: ScrollDirection;
+}
+
+export function getScrollHostInfo(element: HTMLElement, excludeStaticParent?: boolean): IScrollHostInfo {
     if (element === null || element === undefined || element instanceof Document) {
-        return window;
+        return {
+            scrollHost: window,
+            scrollDirection: ScrollDirection.Vertical
+        };
     }
 
     var elementComputedStyle = getComputedStyle(element);
@@ -14,9 +27,12 @@ export function getScrollHost(element: HTMLElement, excludeStaticParent?: boolea
         var isOverFlow = OVERFLOW_REGEX.test(elementComputedStyle.overflow + elementComputedStyle.overflowY + elementComputedStyle.overflowX);
 
         if (isOverFlow) {
-            return element;
+            return {
+                scrollHost: element,
+                scrollDirection: OVERFLOW_REGEX.test(elementComputedStyle.overflowX) ? ScrollDirection.Horizontal : ScrollDirection.Vertical
+            };
         }
     }
 
-    return getScrollHost(element.parentElement, excludeStaticParent);
+    return getScrollHostInfo(element.parentElement, excludeStaticParent);
 }

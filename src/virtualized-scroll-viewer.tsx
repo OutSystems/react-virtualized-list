@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import * as Extensions from "extensions";
+import { ScrollDirection, IScrollHostInfo, getScrollHostInfo } from "extensions";
 
 const SCROLL_EVENT_NAME = "scroll";
 const RESIZE_EVENT_NAME = "resize";
@@ -12,7 +12,6 @@ const PIXEL_UNITS = "px";
 export interface IScrollViewerProperties {
     length: number;
     renderItem: (index: number) => JSX.Element;
-    verticalScrollVirtualization?: boolean; // TODO auto detect
     scrollChanged?: () => void;
 }
 
@@ -34,7 +33,8 @@ interface IScrollViewerState {
 export class VirtualizedScrollViewer extends React.Component<IScrollViewerProperties, IScrollViewerState> {
     
     private scrollHandler: () => void;
-    private scrollHost: HTMLElement | Window;
+    private scrollHostInfo: IScrollHostInfo;
+    private scrollDirection: ScrollDirection = ScrollDirection.Vertical;
     private updateQueued = false;
     
     constructor(props: IScrollViewerProperties, context: any) {
@@ -51,20 +51,21 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     /**
      * The element that owns the scrollbars
      */
-    private getScrollHost(): HTMLElement | Window {
-        if (!this.scrollHost) {
-            this.scrollHost = Extensions.getScrollHost(ReactDOM.findDOMNode(this) as HTMLElement);
+    private getScrollHostInfo(): IScrollHostInfo {
+        if (!this.scrollHostInfo) {
+            this.scrollHostInfo = getScrollHostInfo(ReactDOM.findDOMNode(this) as HTMLElement);
         }
 
-        return this.scrollHost;
+        return this.scrollHostInfo;
     }
     
     /**
      * Scroll information: the element that has the scrollbar, its viewport size and the scroll position
      */
     private getScrollInfo(): IScrollInfo {
-        let scrollHost = this.getScrollHost();
+        let scrollHostInfo = this.getScrollHostInfo();
         let scrollInfo: IScrollInfo;
+        let scrollHost = scrollHostInfo.scrollHost;
         
         if (scrollHost instanceof Window) {
             scrollInfo = {
@@ -72,7 +73,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 scrollOffset: this.getDimension(scrollHost.scrollY, scrollHost.scrollX),
                 viewportSize: this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth),
                 viewportLowerBound: this.getDimension(0, 0),
-                viewportUpperBound: this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth)
+                viewportUpperBound: this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth),
             };
         } else if (scrollHost instanceof HTMLElement) {
             let bounds = scrollHost.getBoundingClientRect();
@@ -81,7 +82,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 scrollOffset: this.getDimension(scrollHost.scrollTop, scrollHost.scrollLeft),
                 viewportSize: this.getDimension(scrollHost.clientHeight, scrollHost.clientWidth),
                 viewportLowerBound: this.getDimension(bounds.top, bounds.left),
-                viewportUpperBound: this.getDimension(bounds.bottom, bounds.right)
+                viewportUpperBound: this.getDimension(bounds.bottom, bounds.right),
             };
         }
 
@@ -92,25 +93,26 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Adds hooks to capture scroll events of the scrollable parent
      */
     private addScrollHandler(): void {
-        let scrollHost = this.getScrollHost();
+        let scrollHost = this.getScrollHostInfo().scrollHost;
         scrollHost.addEventListener(SCROLL_EVENT_NAME, this.scrollHandler);
         scrollHost.addEventListener(RESIZE_EVENT_NAME, this.scrollHandler);
     }
     
     private removeScrollHandler(): void {
-        let scrollHost = this.getScrollHost();
+        let scrollHost = this.getScrollHostInfo().scrollHost;
         scrollHost.removeEventListener(SCROLL_EVENT_NAME, this.scrollHandler);
         scrollHost.removeEventListener(RESIZE_EVENT_NAME, this.scrollHandler);
     }
     
     public componentDidMount(): void {
         this.addScrollHandler();
+        this.scrollDirection = this.getScrollHostInfo().scrollDirection; // won't be updated later if changes (case not supported now)
         this.setState(this.getCurrentScrollViewerState(this.props.length)); // rerender with the right amount of items in the viewport
     }
     
     public componentWillUnmount(): void {
         this.removeScrollHandler();
-        this.scrollHost = null;
+        this.scrollHostInfo = null;
     }
     
     public componentWillReceiveProps(nextProps: IScrollViewerProperties) {
@@ -171,7 +173,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Returns the appropriate dimension according to the scroll direction
      */
     private getDimension(vertical: number, horizontal: number): number {
-        return this.props.verticalScrollVirtualization !== false ? vertical : horizontal;
+        return this.scrollDirection === ScrollDirection.Horizontal ? horizontal : vertical;
     }
     
     /**
@@ -181,25 +183,33 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let scrollInfo = this.getScrollInfo();
         let scrollViewerElement: HTMLElement = ReactDOM.findDOMNode(this) as HTMLElement;
         
-        let augmentedViewportSize = 1.5 * scrollInfo.viewportSize; // safety margin to avoid showing blank space
+        let viewportAbsolutePosition = 0;
+        
+        if (scrollInfo.scrollHost !== scrollViewerElement) {
+            let scrollViewerParentBounds = scrollViewerElement.parentElement.getBoundingClientRect();
+            // list (parent) element absolute position
+            viewportAbsolutePosition = scrollInfo.scrollOffset + this.getDimension(scrollViewerParentBounds.top, scrollViewerParentBounds.left);
+        }
         
         // calculate average item size
         let firstItemBounds = scrollViewerElement.firstElementChild.getBoundingClientRect();
         let lastItemBounds = scrollViewerElement.lastElementChild.getBoundingClientRect();
         let visibleItemsSize = this.getDimension(lastItemBounds.bottom, lastItemBounds.right) - this.getDimension(firstItemBounds.top, firstItemBounds.left);
-        let averageItemSize = visibleItemsSize / scrollViewerElement.children.length;
+        let averageItemSize = visibleItemsSize / scrollViewerElement.children.length;  
         
         if (this.state.averageItemSize !== 0) {
-            // to avoid great oscillation, give more weight to stored averageItemSize
+            // to avoid great oscillation, give more weight to aggregated averageItemSize
             averageItemSize = (0.8 * this.state.averageItemSize) + (0.2 * averageItemSize);
-        }
+        } 
         
-        let estimatedAllItemsSize = averageItemSize * listLength;
-        let scrollPercentage = scrollInfo.scrollOffset / estimatedAllItemsSize; 
-        let numberOfVisibleItems = Math.ceil(augmentedViewportSize / averageItemSize);
+        // number of items that fit in the viewport
+        let numberOfVisibleItems = Math.ceil(scrollInfo.viewportSize / averageItemSize);
         
-        let firstVisibleItemIndex = Math.max(0, Math.floor(scrollPercentage * listLength));
-        let lastVisibleItemIndex = firstVisibleItemIndex + numberOfVisibleItems;
+        // number of extra items to render before/after viewport bounds for performance and safety (don't show blank space) reasons
+        let numberOfSafetyItems = Math.ceil((scrollInfo.viewportSize * 0.25) / averageItemSize);
+        
+        let firstVisibleItemIndex = Math.max(0, Math.floor(scrollInfo.scrollOffset / averageItemSize) - (Math.ceil(viewportAbsolutePosition / averageItemSize) + numberOfSafetyItems));  
+        let lastVisibleItemIndex = firstVisibleItemIndex + numberOfVisibleItems + (numberOfSafetyItems * 2);
         if (lastVisibleItemIndex >= listLength) {
             // last calculated visible index is > last possible index
             lastVisibleItemIndex = Math.min(listLength - 1, lastVisibleItemIndex);
