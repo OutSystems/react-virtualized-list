@@ -1,6 +1,3 @@
-// TODO:
-// - auto detect scroll direction
-
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { ScrollDirection, IScrollHostInfo, getScrollHostInfo } from "extensions";
