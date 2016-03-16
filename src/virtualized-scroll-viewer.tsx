@@ -1,7 +1,5 @@
 // TODO:
 // - auto detect scroll direction
-// - if list size chnages and scroll is over last item, empty space will be shown
-
 
 import * as React from "react";
 import * as ReactDOM from "react-dom";
@@ -45,7 +43,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         this.state = {
             firstVisibleItemIndex: 0,
             lastVisibleItemIndex: 1,
-            averageItemSize: 1,
+            averageItemSize: 0,
             scrollOffset: 0
         };
     }
@@ -183,75 +181,32 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let scrollInfo = this.getScrollInfo();
         let scrollViewerElement: HTMLElement = ReactDOM.findDOMNode(this) as HTMLElement;
         
-        let viewportSafetyMargin = 0.5 * scrollInfo.viewportSize; // safety margin to avoid showing blank space
-        let sizeAvailableAtBeginning = 0;
-        let sizeAvailableAtEnd = 0;
-        let scrollCompensation = 0;
-        
-         // find the first item index inside viewport with safety margin
-        let firstVisibleItemIndex = 0;
-        let viewportLowerBound = scrollInfo.viewportLowerBound - viewportSafetyMargin;
-        for (let i = 0; i < scrollViewerElement.children.length; i++) {
-            let listItemElement = scrollViewerElement.children[i];
-            let listItemElementBounds = listItemElement.getBoundingClientRect();
-            
-            if (this.getDimension(listItemElementBounds.bottom, listItemElementBounds.right) >= viewportLowerBound) {
-                // item is inside viewport with safety margin
-                
-                // calculate space available for more items at the beginning of the list
-                sizeAvailableAtBeginning = Math.max(0, this.getDimension(listItemElementBounds.top, listItemElementBounds.left) - viewportLowerBound);
-                firstVisibleItemIndex = i;
-                break;
-            } else {
-                // item is going to be discarded -> its height must be compensated
-                scrollCompensation += this.getDimension(listItemElementBounds.height, listItemElementBounds.width); 
-            }
-        }
-        
-        // find the last item index inside viewport with safety margin
-        let lastVisibleItemIndex = 0;
-        let viewportUpperBound = scrollInfo.viewportUpperBound + viewportSafetyMargin;
-        for (let i = scrollViewerElement.children.length - 1; i >= 0; i--) {
-            let listItemElement = scrollViewerElement.children[i];
-            let listItemElementBounds = listItemElement.getBoundingClientRect();
-             
-            if (this.getDimension(listItemElementBounds.top, listItemElementBounds.left) <= viewportUpperBound) {
-                // item is outside viewport with safety margin
-                
-                // calculate space available for more items at the end of the list
-                sizeAvailableAtEnd = Math.max(0, viewportUpperBound - this.getDimension(listItemElementBounds.bottom, listItemElementBounds.right));
-                lastVisibleItemIndex = i;
-                break;
-            }
-        }
+        let augmentedViewportSize = 1.5 * scrollInfo.viewportSize; // safety margin to avoid showing blank space
         
         // calculate average item size
         let firstItemBounds = scrollViewerElement.firstElementChild.getBoundingClientRect();
         let lastItemBounds = scrollViewerElement.lastElementChild.getBoundingClientRect();
-        let averageItemSize = (this.getDimension(lastItemBounds.bottom, lastItemBounds.right) - this.getDimension(firstItemBounds.top, firstItemBounds.left)) / scrollViewerElement.children.length;  
+        let visibleItemsSize = this.getDimension(lastItemBounds.bottom, lastItemBounds.right) - this.getDimension(firstItemBounds.top, firstItemBounds.left);
+        let averageItemSize = visibleItemsSize / scrollViewerElement.children.length;
         
-        // calculate the number of items that fit the remaining available space (both at begining and end of the list)
-        let numberOfItemsThatFitRemainingSpaceAtBeginning = Math.ceil(sizeAvailableAtBeginning / averageItemSize);
-        firstVisibleItemIndex = Math.max(0, this.state.firstVisibleItemIndex + firstVisibleItemIndex - numberOfItemsThatFitRemainingSpaceAtBeginning);
-        let numberOfItemsThatFitRemainingSpaceAtEnd = Math.ceil(sizeAvailableAtEnd / averageItemSize);
-        lastVisibleItemIndex = Math.max(0, this.state.firstVisibleItemIndex + lastVisibleItemIndex + numberOfItemsThatFitRemainingSpaceAtEnd);
-        
-        let scrollOffset = 0;
-        
-        if (lastVisibleItemIndex >= listLength) {
-            // number of list items changed, coerce indexes to be within list bounds
-            let numberOfVisibleItems = lastVisibleItemIndex - firstVisibleItemIndex;
-            lastVisibleItemIndex = listLength;
-            firstVisibleItemIndex = Math.max(0, lastVisibleItemIndex - numberOfVisibleItems);
-        } else {
-            // calculate scroll compensation for the items removed/added
-            if (scrollCompensation > 0) {
-                scrollOffset = scrollCompensation; // compensate scroll with height of elements removed
-            } else if (firstVisibleItemIndex < this.state.firstVisibleItemIndex) {
-                scrollOffset = (firstVisibleItemIndex - this.state.firstVisibleItemIndex) * averageItemSize; // compensate scroll with the estimated height of elements inserted
-            }
-            scrollOffset = Math.max(0, this.state.scrollOffset + scrollOffset);
+        if (this.state.averageItemSize !== 0) {
+            // to avoid great oscillation, give more weight to stored averageItemSize
+            averageItemSize = (0.8 * this.state.averageItemSize) + (0.2 * averageItemSize);
         }
+        
+        let estimatedAllItemsSize = averageItemSize * listLength;
+        let scrollPercentage = scrollInfo.scrollOffset / estimatedAllItemsSize; 
+        let numberOfVisibleItems = Math.ceil(augmentedViewportSize / averageItemSize);
+        
+        let firstVisibleItemIndex = Math.max(0, Math.floor(scrollPercentage * listLength));
+        let lastVisibleItemIndex = firstVisibleItemIndex + numberOfVisibleItems;
+        if (lastVisibleItemIndex >= listLength) {
+            // last calculated visible index is > last possible index
+            lastVisibleItemIndex = Math.min(listLength - 1, lastVisibleItemIndex);
+            firstVisibleItemIndex = lastVisibleItemIndex - numberOfVisibleItems
+        }
+        
+        let scrollOffset = averageItemSize * firstVisibleItemIndex; // estimated scroll offset based on average item size
         
         return {
             firstVisibleItemIndex: firstVisibleItemIndex,
