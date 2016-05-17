@@ -173,17 +173,31 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         return this.scrollDirection === ScrollDirection.Horizontal ? horizontal : vertical;
     }
     
+    private areElementsStacked(scrollViewerElement: HTMLElement): boolean {
+        if (scrollViewerElement.childNodes.length < 2) {
+            return false;
+        }
+
+        let firstElement = scrollViewerElement.children[0];
+        let secondElement = scrollViewerElement.children[1];
+
+        let firstElementBounds = firstElement.getBoundingClientRect();
+        let secondElementBounds = secondElement.getBoundingClientRect();
+
+        return this.getDimension(secondElementBounds.top, 0) >= this.getDimension(firstElementBounds.bottom, 1); // elements stacked vertically; horizontal stacking not supported yet
+    }
+    
     /**
      * Calculate first and last visible items for the current scroll state, as well as the scroll offset
      */
     private getCurrentScrollViewerState(listLength: number): IScrollViewerState {
         let scrollViewerElement: HTMLElement = ReactDOM.findDOMNode(this) as HTMLElement;
         
-        if (scrollViewerElement.firstElementChild && getComputedStyle(scrollViewerElement.firstElementChild).display !== "block") {
+        if (!this.areElementsStacked(scrollViewerElement)) {
             // disable virtualization if list elements are not block (not supported)
             return {
                 firstVisibleItemIndex: 0,
-                lastVisibleItemIndex: Math.max(0, this.props.length - 1),
+                lastVisibleItemIndex: Math.max(1, this.props.length - 1), // we need at least 2 elements to find the stacking direction
                 averageItemSize: 1,
                 scrollOffset: 0  
             };
