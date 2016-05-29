@@ -8,8 +8,10 @@ const PIXEL_UNITS = "px";
 
 export interface IScrollViewerProperties {
     length: number;
-    renderItem: (index: number) => JSX.Element;
+    renderItems: (startIndex: number, length: number) => React.ReactFragment;
     scrollChanged?: () => void;
+    component: React.ComponentClass<any> | string;
+    attributes: React.HTMLAttributes;
 }
 
 interface IScrollInfo {
@@ -24,7 +26,8 @@ interface IScrollViewerState {
     firstVisibleItemIndex: number,
     lastVisibleItemIndex: number,
     averageItemSize: number,
-    scrollOffset: number
+    scrollOffset: number,
+    wrapperElementIsScrollHost: boolean
 }
 
 export class VirtualizedScrollViewer extends React.Component<IScrollViewerProperties, IScrollViewerState> {
@@ -32,7 +35,9 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     private scrollHandler: () => void;
     private scrollHostInfo: IScrollHostInfo;
     private scrollDirection: ScrollDirection = ScrollDirection.Vertical;
-    private updateQueued = false;
+    private pendingPropertiesUpdate: boolean = false;
+    private pendingScrollAsyncUpdateHandle: number;
+    private itemsContainer: HTMLElement;
     
     constructor(props: IScrollViewerProperties, context: any) {
         super(props, context);
@@ -41,7 +46,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             firstVisibleItemIndex: 0,
             lastVisibleItemIndex: 1,
             averageItemSize: 0,
-            scrollOffset: 0
+            scrollOffset: 0,
+            wrapperElementIsScrollHost: true,
         };
     }
     
@@ -65,7 +71,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let scrollHost = scrollHostInfo.scrollHost;
         
         if (scrollHost instanceof Window) {
-            scrollInfo = {
+            return {
                 scrollHost: scrollHost,
                 scrollOffset: this.getDimension(scrollHost.scrollY, scrollHost.scrollX),
                 viewportSize: this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth),
@@ -74,7 +80,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             };
         } else if (scrollHost instanceof HTMLElement) {
             let bounds = scrollHost.getBoundingClientRect();
-            scrollInfo = {
+            return {
                 scrollHost: scrollHost,
                 scrollOffset: this.getDimension(scrollHost.scrollTop, scrollHost.scrollLeft),
                 viewportSize: this.getDimension(scrollHost.clientHeight, scrollHost.clientWidth),
@@ -82,8 +88,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 viewportUpperBound: this.getDimension(bounds.bottom, bounds.right),
             };
         }
-
-        return scrollInfo;
+        
+        return null;
     }
     
     /**
@@ -108,51 +114,80 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     }
     
     public componentWillUnmount(): void {
+        cancelAnimationFrame(this.pendingScrollAsyncUpdateHandle);
         this.removeScrollHandler();
         this.scrollHostInfo = null;
     }
     
-    public componentWillReceiveProps(nextProps: IScrollViewerProperties) {
+    public componentWillReceiveProps(nextProps: IScrollViewerProperties): void {
         this.setState(this.getCurrentScrollViewerState(nextProps.length)); // rerender with the right amount of items in the viewport
+        this.pendingPropertiesUpdate = true;
+    }
+    
+    public componentDidUpdate(): void {
+        if (this.pendingPropertiesUpdate) {
+            // set state won't have effect if state is the same
+            // updated with list changes, let's compute the visible items
+            this.setState(this.getCurrentScrollViewerState(this.props.length));
+            this.pendingPropertiesUpdate = false;
+        }
     }
     
     private handleScroll(): void {
-        if(this.updateQueued) {
+        if (this.pendingScrollAsyncUpdateHandle) {
             return; // an update already queued, skip
         }
-        this.updateQueued = true;
         
         // delay any updates until render time
-        requestAnimationFrame(() => {
-            this.setState(this.getCurrentScrollViewerState(this.props.length));
-            this.updateQueued = false;
+        this.pendingScrollAsyncUpdateHandle = requestAnimationFrame(() => {
+            let newState = this.getCurrentScrollViewerState(this.props.length);
+            if (this.shallUpdateState(newState)) {
+                // only update when visible items change -> smooth scroll
+                this.setState(newState);
+            }
+            this.pendingScrollAsyncUpdateHandle = 0;
+            console.log(this.state.firstVisibleItemIndex + " " + this.state.scrollOffset + " " + this.state.averageItemSize);
             if (this.props.scrollChanged) {
                 this.props.scrollChanged();
             }
         });
     }
     
+    private shallUpdateState(state: IScrollViewerState) {
+        return state.firstVisibleItemIndex !== this.state.firstVisibleItemIndex ||
+               state.lastVisibleItemIndex !== this.state.lastVisibleItemIndex;
+    }
+    
     private renderList(firstItemVisibleIndex: number, lastVisibleItemIndex: number, scrollOffset: number = 0, size: number = NaN): JSX.Element {
-        let items: JSX.Element[] = [];
-        let length = Math.min(this.props.length, lastVisibleItemIndex + 1);
+        let length = Math.min(this.props.length, lastVisibleItemIndex - firstItemVisibleIndex + 1);
         
         // render only visible items
-        for (let i = firstItemVisibleIndex; i < length; i++) {
-            items.push(this.props.renderItem(i));
-        }
+        let items = this.props.renderItems(firstItemVisibleIndex, length);
         
         size = isNaN(size) ? undefined : (size - scrollOffset);
         
-        let style: React.CSSProperties = {
-            transform: "translate(" + this.getDimension(0, scrollOffset) + PIXEL_UNITS + "," + this.getDimension(scrollOffset, 0) + PIXEL_UNITS + ")", // gpu accelerated
-            minHeight: this.getDimension(size, undefined),
-            minWidth: this.getDimension(undefined, size) 
-        };
-         
-        return (
-            <div style={style}>
-                {items}
-            </div>);
+        let attributes: React.Props<any>;
+        let style: React.CSSProperties;
+        
+        if (this.state.wrapperElementIsScrollHost) {
+            // needs wrapper div around items to set scroll properties
+            attributes = this.props.attributes;
+            style = {};
+            items = React.DOM.div( { style: style, ref: (c) => this.itemsContainer = c }, items);
+        } else {
+            // merge attributes with style
+            attributes = this.props.attributes || {};
+            attributes.ref = (c) => this.itemsContainer = c;
+            style = (attributes as any).style || {};
+        }
+        
+        // can't use transform, otherwise we might overlap other elements on the page
+        style.paddingLeft = this.getDimension(0, scrollOffset) + PIXEL_UNITS;
+        style.paddingTop = this.getDimension(scrollOffset, 0) + PIXEL_UNITS;
+        style.minHeight = this.getDimension(size, undefined);
+        style.minWidth = this.getDimension(undefined, size);
+        
+        return React.createElement(this.props.component as any, attributes, items); // TODO typings
     }
     
     public render(): JSX.Element {
@@ -173,13 +208,13 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         return this.scrollDirection === ScrollDirection.Horizontal ? horizontal : vertical;
     }
     
-    private areElementsStacked(scrollViewerElement: HTMLElement): boolean {
-        if (scrollViewerElement.childNodes.length < 2) {
+    private areElementsStacked(itemsContainer: HTMLElement): boolean {
+        if (itemsContainer.childNodes.length < 2) {
             return false;
         }
 
-        let firstElement = scrollViewerElement.children[0];
-        let secondElement = scrollViewerElement.children[1];
+        let firstElement = itemsContainer.children[0];
+        let secondElement = itemsContainer.children[1];
 
         let firstElementBounds = firstElement.getBoundingClientRect();
         let secondElementBounds = secondElement.getBoundingClientRect();
@@ -191,37 +226,40 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Calculate first and last visible items for the current scroll state, as well as the scroll offset
      */
     private getCurrentScrollViewerState(listLength: number): IScrollViewerState {
-        let scrollViewerElement: HTMLElement = ReactDOM.findDOMNode(this) as HTMLElement;
+        let wrapperElement = ReactDOM.findDOMNode(this) as HTMLElement;
+        let itemsContainer: HTMLElement = this.itemsContainer || wrapperElement;
+        let scrollInfo = this.getScrollInfo();
+        let wrapperElementIsScrollHost: boolean = scrollInfo.scrollHost === wrapperElement;
         
-        if (!this.areElementsStacked(scrollViewerElement)) {
-            // disable virtualization if list elements are not block (not supported)
+        if (!this.areElementsStacked(itemsContainer)) {
+            // disable virtualization if list elements do not stack (not supported)
             return {
                 firstVisibleItemIndex: 0,
                 lastVisibleItemIndex: Math.max(1, this.props.length - 1), // we need at least 2 elements to find the stacking direction
-                averageItemSize: 1,
-                scrollOffset: 0  
+                averageItemSize: 0,
+                scrollOffset: 0,
+                wrapperElementIsScrollHost: wrapperElementIsScrollHost
             };
         }
-        let scrollInfo = this.getScrollInfo();
         
         let viewportAbsolutePosition = 0;
         
-        if (scrollInfo.scrollHost !== scrollViewerElement) {
-            let scrollViewerParentBounds = scrollViewerElement.parentElement.getBoundingClientRect();
+        if (!wrapperElementIsScrollHost) {
+            let scrollViewerParentBounds = itemsContainer.parentElement.getBoundingClientRect();
             // list (parent) element absolute position
             viewportAbsolutePosition = scrollInfo.scrollOffset + this.getDimension(scrollViewerParentBounds.top, scrollViewerParentBounds.left);
         }
         
         // calculate average item size
-        let firstItemBounds = scrollViewerElement.firstElementChild.getBoundingClientRect();
-        let lastItemBounds = scrollViewerElement.lastElementChild.getBoundingClientRect();
+        let firstItemBounds = itemsContainer.firstElementChild.getBoundingClientRect();
+        let lastItemBounds = itemsContainer.lastElementChild.getBoundingClientRect();
         let visibleItemsSize = this.getDimension(lastItemBounds.bottom, lastItemBounds.right) - this.getDimension(firstItemBounds.top, firstItemBounds.left);
-        let averageItemSize = visibleItemsSize / scrollViewerElement.children.length;  
+        let averageItemSize = visibleItemsSize / (itemsContainer.children.length * 1.0);  
         
         if (this.state.averageItemSize !== 0) {
             // to avoid great oscillation, give more weight to aggregated averageItemSize
             averageItemSize = (0.8 * this.state.averageItemSize) + (0.2 * averageItemSize);
-        } 
+        }
         
         // number of items that fit in the viewport
         let numberOfVisibleItems = Math.ceil(scrollInfo.viewportSize / averageItemSize);
@@ -234,16 +272,36 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         if (lastVisibleItemIndex >= listLength) {
             // last calculated visible index is > last possible index
             lastVisibleItemIndex = Math.min(listLength - 1, lastVisibleItemIndex);
-            firstVisibleItemIndex = lastVisibleItemIndex - numberOfVisibleItems
         }
         
-        let scrollOffset = averageItemSize * firstVisibleItemIndex; // estimated scroll offset based on average item size
+        let scrollOffset = 0;
+        
+        if (firstVisibleItemIndex > this.state.firstVisibleItemIndex) {
+            // try to sum the size of the items to disappear on next render to the current scroll offset for smooth scroll
+            let firstItemToDisappearOnNextRender = itemsContainer.children[0].getBoundingClientRect();
+            let numberOfItemsToDisappearOnNextRender = (firstVisibleItemIndex - 1) - this.state.firstVisibleItemIndex;
+            if (numberOfItemsToDisappearOnNextRender < itemsContainer.children.length) {
+                let lastItemToDisappearOnNextRender = itemsContainer.children[numberOfItemsToDisappearOnNextRender].getBoundingClientRect();
+            
+                let sizeOfItemsToDisappearOnNextRender = this.getDimension(lastItemToDisappearOnNextRender.bottom, lastItemToDisappearOnNextRender.right) - this.getDimension(firstItemToDisappearOnNextRender.top, firstItemToDisappearOnNextRender.left);
+                scrollOffset = this.state.scrollOffset + sizeOfItemsToDisappearOnNextRender;
+            } else {
+                // if # items to disappear is > # visible items in the viewport, give an approximate scroll offset
+                scrollOffset = averageItemSize * firstVisibleItemIndex;
+            }
+        } else if (firstVisibleItemIndex < this.state.firstVisibleItemIndex) {
+            // new items will appear, we don't know their sizes yet, give an approximate scroll offset
+            scrollOffset = averageItemSize * firstVisibleItemIndex;
+        } else {
+            scrollOffset = this.state.scrollOffset; // nothing changed
+        }
         
         return {
             firstVisibleItemIndex: firstVisibleItemIndex,
             lastVisibleItemIndex: lastVisibleItemIndex,
             averageItemSize: averageItemSize,
             scrollOffset: scrollOffset,
+            wrapperElementIsScrollHost: wrapperElementIsScrollHost
         };
     }
 }

@@ -7,7 +7,7 @@ class App extends React.Component<{}, { items: number}> {
     constructor() {
         super();
         this.state = {
-            items: 1000
+            items: 0
         };
     }
     
@@ -25,10 +25,11 @@ class App extends React.Component<{}, { items: number}> {
         return (
             <div>
                 <h1>Virtualized list example</h1>
-                <VirtualizedList list={list}/>
                 <br/>
                 <input ref="itemsCount" placeholder="Number of items" defaultValue={this.state.items + ""} />
                 <button onClick={this.refresh.bind(this)}>Refresh</button>
+                <br/>
+                <VirtualizedList list={list}/>
             </div>);
     }
 }

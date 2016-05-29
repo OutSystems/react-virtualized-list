@@ -29,7 +29,7 @@ export function getScrollHostInfo(element: HTMLElement, excludeStaticParent?: bo
         if (isOverFlow) {
             return {
                 scrollHost: element,
-                scrollDirection: OVERFLOW_REGEX.test(elementComputedStyle.overflowX) ? ScrollDirection.Horizontal : ScrollDirection.Vertical
+                scrollDirection: OVERFLOW_REGEX.test(elementComputedStyle.overflowY) ? ScrollDirection.Vertical : ScrollDirection.Horizontal
             };
         }
     }
