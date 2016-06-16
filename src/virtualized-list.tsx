@@ -20,20 +20,30 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
         return items;
     }
     
-    /*private createScrollViewerContainer(): JSX.Element {
-        return React.createElement((React as any).CSSTransitionGroup);
-    }*/
+    private createScrollViewerContainer(children: React.ReactFragment): JSX.Element {
+        let listAttributes = {
+            className: "list",
+            component: "div",
+            transitionName: "example",
+            transitionAppear: true,
+            transitionAppearTimeout: 1000,
+            transitionEnterTimeout: 1000,
+            transitionLeaveTimeout: 1000,
+            paddingBottom: 10000,
+         };
+        //return React.createElement((React as any).addons.CSSTransitionGroup, listAttributes, children);
+        return React.DOM.div(listAttributes, children);
+    }
     
     public render() {
-        let listAttributes: React.HTMLAttributes = {
-            className: "list"
-         };
+        
         return (
-            <VirtualizedScrollViewer renderItems={this.renderItems.bind(this)} 
+            <VirtualizedScrollViewer renderItems={(start, end) => this.renderItems(start, end)} 
                                      length={this.props.list.length}
-                                     attributes={listAttributes}
+                                     renderWrapper={(children) => this.createScrollViewerContainer(children)} />
+                                     //attributes={listAttributes}
                                      //component={(React as any).addons.CSSTransitionGroup}/>
-                                     component={"div"} />
+                                     //component={"div"} />
         );
     }
 }

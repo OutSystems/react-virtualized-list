@@ -19,7 +19,7 @@ class App extends React.Component<{}, { items: number}> {
     
     render() {
         let list: number[] = [];
-        for (let i = 1; i <= this.state.items; i++) {
+        for (let i = 0; i < this.state.items; i++) {
             list.push(i);
         }
         return (
