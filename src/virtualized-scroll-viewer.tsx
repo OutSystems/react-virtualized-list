@@ -285,14 +285,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         
         let viewportAbsolutePosition = 0;
         let scrollInfo = this.getScrollInfo();
-        let itemsContainerIsScrollHost: boolean = scrollInfo.scrollHost === this.itemsContainer;
-        
-        if (!itemsContainerIsScrollHost) {
-            // TODO is this still needed?
-            //let scrollViewerParentBounds = itemsContainer.parentElement.getBoundingClientRect();
-            // list (parent) element absolute position
-            //viewportAbsolutePosition = scrollInfo.scrollOffset + this.getDimension(scrollViewerParentBounds.top, scrollViewerParentBounds.left);
-        }
         
         let averageItemSize = this.calculateAverageItemsSize(items);
         
