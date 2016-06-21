@@ -122,7 +122,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         this.itemsContainer = ReactDOM.findDOMNode(this) as HTMLElement;
         this.addScrollHandler();
         this.scrollDirection = this.getScrollHostInfo().scrollDirection; // won't be updated later if changes (case not supported now)
-        
+
         // rerender with the right amount of items in the viewport
         // we first rendered only just 2 elements, now lets render the remaining visible elements
         this.setState(this.getCurrentScrollViewerState(this.props.length));
@@ -244,7 +244,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     }
     
     private getItemBounds(item: Element): Rect {
-        const MIN_SIZE = 10;
+        const MIN_SIZE = 20; // minimum items size
         let bounds = item.getBoundingClientRect();
         let rect: Rect = {
             width: bounds.width,
@@ -278,9 +278,10 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
 
         let firstElement = items[0];
         let secondElement = items[1];
-
-        let firstElementBounds = this.getItemBounds(firstElement);
-        let secondElementBounds = this.getItemBounds(secondElement);
+        
+        // get elements original dimensions (do not use the getDimension function)
+        let firstElementBounds = firstElement.getBoundingClientRect();
+        let secondElementBounds = secondElement.getBoundingClientRect();
 
         return this.getDimension(secondElementBounds.top, 0) >= this.getDimension(firstElementBounds.bottom, 1); // elements stacked vertically; horizontal stacking not supported yet
     }
@@ -289,19 +290,22 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Calculate the average size (height or width) of the items given
      */
     private calculateAverageItemsSize(items: Element[]): number {
-        let visibleItemsSize = this.calculateItemsSize(items[0], items[items.length - 1]);
+        let visibleItemsSize = this.calculateItemsSize(items, 0, items.length - 1);
         return visibleItemsSize / (items.length * 1.0);  
     }
     
     /**
      * Calculate the total size (height or width) of the items given
      */
-    private calculateItemsSize(firstItem: Element, lastItem: Element): number {
-        // TODO consider minimum size
-        let firstItemBounds = firstItem.getBoundingClientRect();
-        let lastItemBounds = lastItem.getBoundingClientRect();
+    private calculateItemsSize(items: Element[], firstItemIndex: number, lastItemIndex: number): number {
+        let size = 0;
+        // we have to iterator over all items to consider a minimum size for each
+        for (let i = firstItemIndex; i <= lastItemIndex; i++) {
+            let itemBounds = this.getItemBounds(items[i]);
+            size += this.getDimension(itemBounds.height, itemBounds.width);
+        }
     
-        return this.getDimension(lastItemBounds.bottom, lastItemBounds.right) - this.getDimension(firstItemBounds.top, firstItemBounds.left);    
+        return size;
     }
     
     /**
@@ -391,7 +395,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                  
                 if (firstItemIndexInViewport > 0) {
                     // calculate the size of the items that will leave viewport
-                    let sizeOfItemsLeavingOnNextRender = this.calculateItemsSize(items[0], items[firstItemIndexInViewport - 1]);
+                    let sizeOfItemsLeavingOnNextRender = this.calculateItemsSize(items, 0, firstItemIndexInViewport - 1);
                     
                     firstVisibleItemIndex += firstItemIndexInViewport;
                     scrollOffset += sizeOfItemsLeavingOnNextRender; // compensate scroll with the size of the items leaving
@@ -423,8 +427,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 scrollOffset = Math.round(firstVisibleItemIndex * averageItemSize);
             }
         } else {
-            let lastItemEnteringViewport = Math.min(items.length, this.state.itemsEnteringCount - 1);
-            let sizeOfItemsEnteringViewport = this.calculateItemsSize(items[0], items[lastItemEnteringViewport]);
+            let lastItemEnteringViewport = Math.min(items.length - 1, this.state.itemsEnteringCount - 1);
+            let sizeOfItemsEnteringViewport = this.calculateItemsSize(items, 0, lastItemEnteringViewport);
             scrollOffset = Math.max(0, scrollOffset - sizeOfItemsEnteringViewport);
         }
         
