@@ -59,6 +59,7 @@ class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
         
         requestAnimationFrame(() => {
             node.classList.add(animationClassName + ANIMATION_ACTIVE);
+            // TODO missing transition delay
             let animationDuration = parseFloat(getComputedStyle(node).transitionDuration) * 1000;
             
             let animationEnd = () => {
