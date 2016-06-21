@@ -10,7 +10,7 @@ define(["require", "exports", "react", "react-dom", "virtualized-list"], functio
         function App() {
             _super.call(this);
             this.state = {
-                items: 1000
+                items: 0
             };
         }
         App.prototype.refresh = function () {
@@ -20,13 +20,12 @@ define(["require", "exports", "react", "react-dom", "virtualized-list"], functio
         };
         App.prototype.render = function () {
             var list = [];
-            for (var i = 1; i <= this.state.items; i++) {
+            for (var i = 0; i < this.state.items; i++) {
                 list.push(i);
             }
-            return (React.createElement("div", null, React.createElement("h1", null, "Virtualized list example"), React.createElement(virtualized_list_1.VirtualizedList, {list: list}), React.createElement("br", null), React.createElement("input", {ref: "itemsCount", placeholder: "Number of items", defaultValue: this.state.items + ""}), React.createElement("button", {onClick: this.refresh.bind(this)}, "Refresh")));
+            return (React.createElement("div", null, React.createElement("h1", null, "Virtualized list example"), React.createElement("br", null), React.createElement("input", {ref: "itemsCount", placeholder: "Number of items", defaultValue: this.state.items + ""}), React.createElement("button", {onClick: this.refresh.bind(this)}, "Refresh"), React.createElement("br", null), React.createElement(virtualized_list_1.VirtualizedList, {list: list})));
         };
         return App;
     }(React.Component));
     ReactDOM.render(React.createElement(App), document.getElementById("container"));
 });
-//# sourceMappingURL=index.js.map
