@@ -6,6 +6,8 @@ const ANIMATION_ENTER = "-enter";
 const ANIMATION_LEAVE = "-leave";
 const ANIMATION_ACTIVE = "-active";
 
+const TICK = 17; // same as CSS Transition group
+
 export interface IAnimatedAttributes extends React.HTMLProps<any>, React.TransitionGroupProps {
     shouldSuspendAnimations: () => boolean;
     animationClassName: string;
@@ -43,6 +45,11 @@ class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
         return this.props.animationClassName;
     }
 
+    private queueAction(action: Function, timeout: number) {
+        let timeoutHandle = setTimeout(action, timeout);
+        this.transitionTimeouts.push(timeoutHandle);
+    }
+    
     private transition(transitionName: string, done: Function) {
         if (this.props.shouldSuspendAnimations()) {
             done();
@@ -57,20 +64,21 @@ class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
             cancelAnimationFrame(this.transitionRAF);
         }*/
         
-        requestAnimationFrame(() => {
-            node.classList.add(animationClassName + ANIMATION_ACTIVE);
-            // TODO missing transition delay
-            let animationDuration = parseFloat(getComputedStyle(node).transitionDuration) * 1000;
-            
-            let animationEnd = () => {
-                node.classList.remove(animationClassName);
-                node.classList.remove(animationClassName + ANIMATION_ACTIVE);
-                done();
-            };
-            
-            let timeout = setTimeout(animationEnd, animationDuration);
-            this.transitionTimeouts.push(timeout);
-        });
+        this.queueAction(
+            () => {
+                node.classList.add(animationClassName + ANIMATION_ACTIVE);
+                // TODO missing transition delay
+                let animationDuration = parseFloat(getComputedStyle(node).transitionDuration) * 1000;
+                
+                let animationEnd = () => {
+                    node.classList.remove(animationClassName);
+                    node.classList.remove(animationClassName + ANIMATION_ACTIVE);
+                    done();
+                };
+                
+                this.queueAction(animationEnd, animationDuration);
+            }, 
+            TICK);
     }
     
     public componentWillEnter(done: Function): void {
