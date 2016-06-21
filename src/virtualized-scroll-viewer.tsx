@@ -8,7 +8,7 @@ const PIXEL_UNITS = "px";
 
 export interface IScrollViewerProperties {
     length: number;
-    renderItems: (startIndex: number, length: number) => React.ReactFragment;
+    renderItems: (startIndex: number, length: number, map: (child: JSX.Element) => JSX.Element) => React.ReactFragment;
     scrollChanged?: () => void;
     renderWrapper: (children: React.ReactFragment) => JSX.Element; 
 }
@@ -38,6 +38,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     private pendingPropertiesUpdate: boolean = false;
     private pendingScrollAsyncUpdateHandle: number;
     private itemsContainer: HTMLElement;
+    private isScrollOngoing: boolean = false;
     
     constructor(props: IScrollViewerProperties, context: any) {
         super(props, context);
@@ -147,11 +148,14 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         
         // delay any updates until render time
         this.pendingScrollAsyncUpdateHandle = requestAnimationFrame(() => {
+            this.isScrollOngoing = true;
             let newState = this.getCurrentScrollViewerState(this.props.length);
             if (this.shallUpdateState(newState)) {
                 // only update when visible items change -> smooth scroll
-                this.setState(newState);
+                this.setState(newState, () => this.isScrollOngoing = false);
                 // console.log(newState.firstVisibleItemIndex + " " + newState.scrollOffset + " " + newState.averageItemSize);
+            } else {
+                this.isScrollOngoing = false;
             }
             
             this.pendingScrollAsyncUpdateHandle = 0;
@@ -166,12 +170,16 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                state.lastVisibleItemIndex !== this.state.lastVisibleItemIndex;
     }
     
+    private wrapChild(child: JSX.Element): JSX.Element {
+        return child; // <VirtualizedAnimatedItem>{child}</VirtualizedAnimatedItem>;
+    }
+    
     private renderList(firstItemVisibleIndex: number, lastVisibleItemIndex: number): JSX.Element {
         let scrollOffset = this.state.scrollOffset;
         let length = Math.min(this.props.length, lastVisibleItemIndex - firstItemVisibleIndex + 1);
         
         // render only visible items
-        let items = this.props.renderItems(firstItemVisibleIndex, length);
+        let items = this.props.renderItems(firstItemVisibleIndex, length, this.wrapChild);
         
         let remainingSize = 0;
         if (lastVisibleItemIndex < (this.props.length - 1)) {
@@ -269,8 +277,21 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Calculate first and last visible items for the current scroll state, as well as the scroll offset
      */
     private getCurrentScrollViewerState(listLength: number): IScrollViewerState {
+        const DISABLE_ANIMATIONS_CLASSNAME = "_scroll-viewer-disable-animations";
         let items = this.getListItems(this.itemsContainer);
-        
+        /*for (let item of items) {
+            item.classList.add(DISABLE_ANIMATIONS_CLASSNAME);
+        }
+        try {*/
+            return this.innerGetCurrentScrollViewerState(items, listLength);
+        /*} finally {
+            for (let item of items) {
+                //item.classList.remove(DISABLE_ANIMATIONS_CLASSNAME);
+            }
+        }*/
+    }
+    
+    private innerGetCurrentScrollViewerState(items: Element[], listLength: number): IScrollViewerState {
         if (!this.areElementsStacked(items)) {
             // disable virtualization if list elements do not stack (not supported)
             return {
@@ -377,5 +398,9 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             effectiveScrollValue: scrollInfo.scrollOffset,
             itemsEnteringCount: itemsEnteringViewportCount
         };
+    }
+    
+    public get isScrolling(): boolean {
+        return this.isScrollOngoing;
     }
 }
