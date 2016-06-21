@@ -2,6 +2,8 @@ import * as React from "react";
 import { VirtualizedScrollViewer } from "virtualized-scroll-viewer";
 import { AnimatedGroup, IAnimatedAttributes } from "animated-group";
 
+const SCROLL_VIEWER_COMPONENT_REF = "scrollViewer";
+
 export interface IVirtualizedListProperties {
     list: number[]
 }
@@ -24,7 +26,7 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
     }
     
     private getScrollViewer(): VirtualizedScrollViewer {
-        return this.refs["scrollViewer"] as VirtualizedScrollViewer;
+        return this.refs[SCROLL_VIEWER_COMPONENT_REF] as VirtualizedScrollViewer;
     }
     
     private createScrollViewerContainer(children: React.ReactFragment): JSX.Element {
@@ -32,27 +34,17 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
             className: "list",
             component: "div",
             shouldSuspendAnimations: () => this.getScrollViewer().isScrolling,
-            animationClassName: "example"
-            /*transitionName: "example",
-            transitionAppear: true,
-            transitionAppearTimeout: 10000,
-            transitionEnterTimeout: 10000,
-            transitionLeaveTimeout: 10000*/
+            transitionName: "example"
          };
-         //return React.createElement(AnimatedGroup, listAttributes, children);
-        //return React.createElement((React as any).addons.CSSTransitionGroup, listAttributes, children);
         return React.createElement(AnimatedGroup, listAttributes, children);
-        //return React.DOM.div(listAttributes, children);
     }
     
     public render() {
-        
         return (
             <VirtualizedScrollViewer renderItems={(start, length) => this.renderItems(start, length)} 
-                                     length={this.props.list.length}
                                      renderWrapper={(children) => this.createScrollViewerContainer(children)}
-                                     ref="scrollViewer" />
-                                     //ref={(element) => this.scrollViewer = element} />
+                                     length={this.props.list.length}
+                                     ref={SCROLL_VIEWER_COMPONENT_REF} />
         );
     }
 }

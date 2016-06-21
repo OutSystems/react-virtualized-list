@@ -10,7 +10,7 @@ const TICK = 17; // same as CSS Transition group
 
 export interface IAnimatedAttributes extends React.HTMLProps<any>, React.TransitionGroupProps {
     shouldSuspendAnimations: () => boolean;
-    animationClassName: string;
+    transitionName: string;
 }
 
 export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {
@@ -18,7 +18,7 @@ export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {
     private wrapChild(child: any): React.ReactElement<any> {
         let childAttributes : IAnimatedAttributes = {
           shouldSuspendAnimations: this.props.shouldSuspendAnimations,
-          animationClassName: this.props.animationClassName  
+          transitionName: this.props.transitionName  
         };
         return React.createElement(
             AnimatedItem, 
@@ -38,11 +38,9 @@ export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {
 class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
     
     private transitionTimeouts: number[] = [];
-    //private transitionRAF: number;
-    //private animationClassName: string;
 
     private getAnimationClassName(): string {
-        return this.props.animationClassName;
+        return this.props.transitionName;
     }
 
     private queueAction(action: Function, timeout: number) {
@@ -60,15 +58,12 @@ class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
         let animationClassName = this.getAnimationClassName() + transitionName;
         node.classList.add(animationClassName);
         
-        /*if (this.transitionRAF) {
-            cancelAnimationFrame(this.transitionRAF);
-        }*/
-        
         this.queueAction(
             () => {
                 node.classList.add(animationClassName + ANIMATION_ACTIVE);
-                // TODO missing transition delay
-                let animationDuration = parseFloat(getComputedStyle(node).transitionDuration) * 1000;
+                
+                let nodeStyle = getComputedStyle(node);
+                let animationDuration = parseFloat(nodeStyle.transitionDelay) + parseFloat(nodeStyle.transitionDuration);
                 
                 let animationEnd = () => {
                     node.classList.remove(animationClassName);
@@ -76,7 +71,7 @@ class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
                     done();
                 };
                 
-                this.queueAction(animationEnd, animationDuration);
+                this.queueAction(animationEnd, animationDuration * 1000);
             }, 
             TICK);
     }

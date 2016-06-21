@@ -19,6 +19,25 @@
            height: 100px;
            background: rgb(200, 200, 200)
         }
+        
+        .example-enter {
+            max-height: 0px;
+        }
+
+        .example-enter.example-enter-active {
+            max-height: 200px;
+            transition: max-height 1s ease-in;
+        }
+        
+        .example-leave {
+            max-height: 200px;
+        }
+
+        .example-leave.example-leave-active {
+            max-height: 0;
+            transition: max-height 1s ease-in;
+        }
+        
     </style>
 </head>
     <div id="container"/>

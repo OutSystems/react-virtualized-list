@@ -47,7 +47,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     private pendingPropertiesUpdate: boolean = false;
     private pendingScrollAsyncUpdateHandle: number;
     private itemsContainer: HTMLElement;
-    private isScrollOngoing: boolean = false;
+    private isScrollOngoing: boolean = false; // true when rendering to due scroll changes
     
     constructor(props: IScrollViewerProperties, context: any) {
         super(props, context);
@@ -194,9 +194,9 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         }
         
         let listChildren: any = [];
-        listChildren.push(this.renderSpacer("first-spacer", scrollOffset));
+        listChildren.push(this.renderSpacer("first-spacer", scrollOffset)); // compensate scroll offset
         listChildren.push(items);
-        listChildren.push(this.renderSpacer("last-spacer", remainingSize));
+        listChildren.push(this.renderSpacer("last-spacer", remainingSize)); // compensate scroll height/width
         
         return this.props.renderWrapper(listChildren);
     }
@@ -216,11 +216,11 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             style.width = FILL_SPACE;
             style.height = Math.round(dimension) + PIXEL_UNITS;
         }
-        return <script key={key} style={style}></script>;
+        return React.DOM.script({ key: key, style: style });
     }
     
     public render(): JSX.Element {
-        console.log(this.state.firstVisibleItemIndex + " " + this.state.scrollOffset + " " + this.state.averageItemSize);
+        // console.log(this.state.firstVisibleItemIndex + " " + this.state.scrollOffset + " " + this.state.averageItemSize);
         return this.renderList(this.state.firstVisibleItemIndex, this.state.lastVisibleItemIndex);
     }
     
@@ -244,7 +244,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     }
     
     private getItemBounds(item: Element): Rect {
-        const MIN_SIZE = 20; // minimum items size
+        const MIN_SIZE = 20; // minimum items size (because when items are animating height/width we might get very small values)
         let bounds = item.getBoundingClientRect();
         let rect: Rect = {
             width: bounds.width,
@@ -279,7 +279,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let firstElement = items[0];
         let secondElement = items[1];
         
-        // get elements original dimensions (do not use the getDimension function)
+        // get elements original dimensions (do not use the getDimension function here)
         let firstElementBounds = firstElement.getBoundingClientRect();
         let secondElementBounds = secondElement.getBoundingClientRect();
 
@@ -299,7 +299,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      */
     private calculateItemsSize(items: Element[], firstItemIndex: number, lastItemIndex: number): number {
         let size = 0;
-        // we have to iterator over all items to consider a minimum size for each
+        // we have to iterate over all items and consider a minimum size for each
         for (let i = firstItemIndex; i <= lastItemIndex; i++) {
             let itemBounds = this.getItemBounds(items[i]);
             size += this.getDimension(itemBounds.height, itemBounds.width);
@@ -312,35 +312,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Calculate first and last visible items for the current scroll state, as well as the scroll offset
      */
     private getCurrentScrollViewerState(listLength: number): IScrollViewerState {
-        //const DISABLE_ANIMATIONS_CLASSNAME = "_scroll-viewer-disable-animations";
         let items = this.getListItems(this.itemsContainer);
-        return this.innerGetCurrentScrollViewerState(items, listLength);
-        
-        /*let classesRemoved: string[][] = [];
-        for (let item of items) {
-            let itemClassesRemoved: string[] = [];
-            for (let className of [ "example-enter", "example-enter-active" ]) {
-                if (item.classList.contains(className)) {
-                    item.classList.remove(className);
-                    itemClassesRemoved.push(className);
-                }
-            }
-            classesRemoved.push(itemClassesRemoved);
-        }
-        try {
-            return this.innerGetCurrentScrollViewerState(items, listLength);
-        } finally {
-            let i = 0;
-            for (let item of items) {
-                let itemClassesRemoved: string[] = classesRemoved[i++];
-                for (let className of itemClassesRemoved) {
-                    item.classList.add(className);
-                }
-            }
-        }*/
-    }
-    
-    private innerGetCurrentScrollViewerState(items: Element[], listLength: number): IScrollViewerState {
+
         if (!this.areElementsStacked(items)) {
             // disable virtualization if list elements do not stack (not supported)
             return {
