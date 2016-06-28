@@ -21,8 +21,9 @@ export class AnimatedSizeItem extends AnimatedItem {
         return style && style.display.indexOf("inline") === 0;
     }
     
-    protected getAnimationClassName(style: CSSStyleDeclaration): string {
-        let animationClassName = super.getAnimationClassName(style);
+    protected getAnimationClassName(element: HTMLElement): string {
+        let animationClassName = super.getAnimationClassName(element);
+        let style = getComputedStyle(element);
         if (this.isDisplayInline(style)) {
             // inline* elements will have a different class (usually scale horizontally instead of vertically)
             animationClassName += "-inline";
@@ -30,58 +31,57 @@ export class AnimatedSizeItem extends AnimatedItem {
         return animationClassName;
     }
     
-    private storeSize(element: HTMLElement) {
-        let elementBounds = element.getBoundingClientRect();
-        this.previousWidth = elementBounds.width;
-        this.previousHeight = elementBounds.height;
+    private storeStyleSize(element: HTMLElement) {
+        this.previousStyleWidth = element.style.width;
+        this.previousStyleHeight = element.style.height;
     }
     
-    private setExplicitSize(element: HTMLElement, width: number, height: number) {
-        let elementBounds = element.getBoundingClientRect();
-        if (elementBounds.width !== width) {
-            // width changed - should be animating width
-            this.previousStyleWidth = element.style.width;
-            element.style.width = width + PIXELS_UNIT;
-        }
-        if (elementBounds.height !== height) {
-            // height changed - should be animating height
-            this.previousStyleHeight = element.style.height;
-            element.style.height = height + PIXELS_UNIT;
-        }
-    }
-    
-    private restorePreviousSize(element: HTMLElement) {
+    private restorePreviousStyleSize(element: HTMLElement) {
         element.style.width = this.previousStyleWidth;
         element.style.height = this.previousStyleHeight;
     }
     
-    protected startEnter(element: HTMLElement, style: CSSStyleDeclaration): void {
-        this.storeSize(element);    
+    protected startEnter(element: HTMLElement): void {
+        // store current size
+        let elementBounds = element.getBoundingClientRect();
+        this.previousWidth = elementBounds.width;
+        this.previousHeight = elementBounds.height;    
     }
     
-    protected startEnterTransition(element: HTMLElement, style: CSSStyleDeclaration): void {
-        // set the size of the element to be the same as when we started 
-        this.setExplicitSize(element, this.previousWidth, this.previousHeight);
+    protected startEnterTransition(element: HTMLElement): void {
+        // store inline style size to allow restoring it after animation ends
+        this.storeStyleSize(element);
+        
+        // set the size of the element to be the same as when we started
+        // ... to make width/height transitions work properly 
+        let elementBounds = element.getBoundingClientRect();
+        if (elementBounds.width !== this.previousWidth) {
+            // width changed - should be animating width
+            element.style.width = this.previousWidth + PIXELS_UNIT;
+        }
+        if (elementBounds.height !== this.previousHeight) {
+            // height changed - should be animating height
+            element.style.height = this.previousHeight + PIXELS_UNIT;
+        }
     }
     
-    protected endEnter(element: HTMLElement): void { 
-        this.restorePreviousSize(element);
+    protected endEnter(element: HTMLElement): void {
+        // revert the changes applied prior to animation
+        this.restorePreviousStyleSize(element);
     }
     
     protected startLeave(element: HTMLElement): void {
+        // store inline style size to allow restoring it after animation ends
+        this.storeStyleSize(element);
+        
+        // set inline size ... to make width/height transitions work properly
         let elementBounds = element.getBoundingClientRect();
-        this.previousStyleWidth = element.style.width;
-        this.previousStyleHeight = element.style.height;
         element.style.width = elementBounds.width + PIXELS_UNIT;
         element.style.height = elementBounds.height + PIXELS_UNIT;
     }
     
-    protected startLeaveTransition(element: HTMLElement, style: CSSStyleDeclaration): void {
-        //this.restorePreviousSize(element);
-        element.style.width = "";
-        element.style.height = "";
-    }
-    
-    protected endLeave(element: HTMLElement): void { 
+    protected startLeaveTransition(element: HTMLElement): void {
+        // revert the changes applied prior to animation
+        this.restorePreviousStyleSize(element);
     }
 }

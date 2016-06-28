@@ -8,7 +8,7 @@ const ANIMATION_ACTIVE = "-active";
 
 const TICK = 17; // same as CSS Transition group
 
-type TransitionCallback = (element: HTMLElement, style: CSSStyleDeclaration) => void;
+type TransitionCallback = (element: HTMLElement) => void;
 
 export interface IAnimatedAttributes extends React.HTMLProps<any>, React.TransitionGroupProps {
     shouldSuspendAnimations: () => boolean;
@@ -45,7 +45,7 @@ export class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
     
     private transitionTimeouts: number[] = [];
 
-    protected getAnimationClassName(style: CSSStyleDeclaration): string {
+    protected getAnimationClassName(element: HTMLElement): string {
         return this.props.transitionName;
     }
 
@@ -54,21 +54,15 @@ export class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
         this.transitionTimeouts.push(timeoutHandle);
     }
     
-    private transition(transitionName: string, 
-                       done: Function, 
-                       onStart: TransitionCallback,
-                       onStartTransition: TransitionCallback, 
-                       onEnd: TransitionCallback): void {
-                           
+    private transition(transitionName: string, done: Function, onStart: TransitionCallback, onStartTransition: TransitionCallback, onEnd: TransitionCallback): void {
         if (this.props.shouldSuspendAnimations()) {
             done();
             return;
         }
 
         let element = <HTMLElement> ReactDOM.findDOMNode(this);
-        let initialElementStyle = getComputedStyle(element);
-        let animationClassName = this.getAnimationClassName(initialElementStyle) + transitionName;
-        onStart(element, initialElementStyle);
+        let animationClassName = this.getAnimationClassName(element) + transitionName;
+        onStart(element);
         element.classList.add(animationClassName);
         
         this.queueAction(
@@ -78,12 +72,12 @@ export class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
                 let elementStyle = getComputedStyle(element);
                 let animationDuration = parseFloat(elementStyle.transitionDelay) + parseFloat(elementStyle.transitionDuration);
                 
-                onStartTransition(element, elementStyle);
+                onStartTransition(element);
                 
                 let animationEnd = () => {
                     element.classList.remove(animationClassName);
                     element.classList.remove(animationClassName + ANIMATION_ACTIVE);
-                    onEnd(element, elementStyle);
+                    onEnd(element);
                     done();
                 };
                 
@@ -95,30 +89,30 @@ export class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
     public componentWillEnter(done: Function): void {
         this.transition(ANIMATION_ENTER, 
                         done, 
-                        (element: HTMLElement, style: CSSStyleDeclaration): void => this.startEnter(element, style),
-                        (element: HTMLElement, style: CSSStyleDeclaration): void => this.startEnterTransition(element, style),
-                        (element: HTMLElement, style: CSSStyleDeclaration): void => this.endEnter(element, style));
+                        (element: HTMLElement): void => this.startEnter(element),
+                        (element: HTMLElement): void => this.startEnterTransition(element),
+                        (element: HTMLElement): void => this.endEnter(element));
     }
     
-    protected startEnter(element: Element, style: CSSStyleDeclaration): void { }
+    protected startEnter(element: HTMLElement): void { }
     
-    protected startEnterTransition(element: Element, style: CSSStyleDeclaration): void { }
+    protected startEnterTransition(element: HTMLElement): void { }
     
-    protected endEnter(element: Element, style: CSSStyleDeclaration): void { }
+    protected endEnter(element: HTMLElement): void { }
 
     public componentWillLeave(done: Function): void {
         this.transition(ANIMATION_LEAVE, 
                         done, 
-                        (element: HTMLElement, style: CSSStyleDeclaration) => this.startLeave(element, style),
-                        (element: HTMLElement, style: CSSStyleDeclaration): void => this.startLeaveTransition(element, style),
-                        (element: HTMLElement, style: CSSStyleDeclaration) => this.endLeave(element, style));
+                        (element: HTMLElement): void => this.startLeave(element),
+                        (element: HTMLElement): void => this.startLeaveTransition(element),
+                        (element: HTMLElement): void => this.endLeave(element));
     }
     
-    protected startLeave(element: HTMLElement, style: CSSStyleDeclaration): void { }
+    protected startLeave(element: HTMLElement): void { }
     
-    protected startLeaveTransition(element: HTMLElement, style: CSSStyleDeclaration): void { }
+    protected startLeaveTransition(element: HTMLElement): void { }
     
-    protected endLeave(element: HTMLElement, style: CSSStyleDeclaration): void { }
+    protected endLeave(element: HTMLElement): void { }
 
     public componentWillUnmount(): void {
         this.transitionTimeouts.forEach((t: number) => clearTimeout(t));
