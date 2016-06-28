@@ -17,6 +17,10 @@ export interface IAnimatedAttributes extends React.HTMLProps<any>, React.Transit
 
 export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {
 
+    protected getDefaultTransitionName(): string {
+        return "";
+    }
+    
     protected getAnimatedItem(): React.ComponentClass<IAnimatedAttributes> {
         return AnimatedItem;
     }
@@ -24,7 +28,7 @@ export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {
     private wrapChild(child: any): React.ReactElement<any> {
         let childAttributes: IAnimatedAttributes = {
             shouldSuspendAnimations: this.props.shouldSuspendAnimations,
-            transitionName: this.props.transitionName  
+            transitionName: this.props.transitionName || this.getDefaultTransitionName()
         };
         return React.createElement(
             this.getAnimatedItem(), 
@@ -55,7 +59,7 @@ export class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
     }
     
     private transition(transitionName: string, done: Function, onStart: TransitionCallback, onStartTransition: TransitionCallback, onEnd: TransitionCallback): void {
-        if (this.props.shouldSuspendAnimations()) {
+        if (this.props.shouldSuspendAnimations && this.props.shouldSuspendAnimations()) {
             done();
             return;
         }

@@ -17,7 +17,7 @@ export class AnimatedSizeItem extends AnimatedItem {
     private previousStyleWidth: string;
     private previousStyleHeight: string;
     
-    private isDisplayInline(style: CSSStyleDeclaration) {
+    private isDisplayInline(style: CSSStyleDeclaration): boolean {
         return style && style.display.indexOf("inline") === 0;
     }
     
@@ -31,12 +31,12 @@ export class AnimatedSizeItem extends AnimatedItem {
         return animationClassName;
     }
     
-    private storeStyleSize(element: HTMLElement) {
+    private storeStyleSize(element: HTMLElement): void {
         this.previousStyleWidth = element.style.width;
         this.previousStyleHeight = element.style.height;
     }
     
-    private restorePreviousStyleSize(element: HTMLElement) {
+    private restorePreviousStyleSize(element: HTMLElement): void {
         element.style.width = this.previousStyleWidth;
         element.style.height = this.previousStyleHeight;
     }

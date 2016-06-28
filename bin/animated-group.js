@@ -3,7 +3,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-define(["require", "exports", "react", "react-dom", "extensions"], function (require, exports, React, ReactDOM, Extensions) {
+define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-extensions"], function (require, exports, React, ReactDOM, virtualized_scroll_viewer_extensions_1) {
     "use strict";
     var ANIMATION_ENTER = "-enter";
     var ANIMATION_LEAVE = "-leave";
@@ -14,15 +14,21 @@ define(["require", "exports", "react", "react-dom", "extensions"], function (req
         function AnimatedGroup() {
             _super.apply(this, arguments);
         }
+        AnimatedGroup.prototype.getDefaultTransitionName = function () {
+            return "";
+        };
+        AnimatedGroup.prototype.getAnimatedItem = function () {
+            return AnimatedItem;
+        };
         AnimatedGroup.prototype.wrapChild = function (child) {
             var childAttributes = {
                 shouldSuspendAnimations: this.props.shouldSuspendAnimations,
-                transitionName: this.props.transitionName
+                transitionName: this.props.transitionName || this.getDefaultTransitionName()
             };
-            return React.createElement(AnimatedItem, Extensions.assign({}, child.props, childAttributes), child);
+            return React.createElement(this.getAnimatedItem(), virtualized_scroll_viewer_extensions_1.ObjectExtensions.assign({}, child.props, childAttributes), child);
         };
         AnimatedGroup.prototype.render = function () {
-            return React.createElement(React.addons.TransitionGroup, Extensions.assign({}, this.props, { childFactory: this.wrapChild.bind(this) }), this.props.children);
+            return React.createElement(React.addons.TransitionGroup, virtualized_scroll_viewer_extensions_1.ObjectExtensions.assign({}, this.props, { childFactory: this.wrapChild.bind(this) }), this.props.children);
         };
         return AnimatedGroup;
     }(React.Component));
@@ -33,47 +39,59 @@ define(["require", "exports", "react", "react-dom", "extensions"], function (req
             _super.apply(this, arguments);
             this.transitionTimeouts = [];
         }
-        AnimatedItem.prototype.getAnimationClassName = function () {
+        AnimatedItem.prototype.getAnimationClassName = function (element) {
             return this.props.transitionName;
         };
         AnimatedItem.prototype.queueAction = function (action, timeout) {
             var timeoutHandle = setTimeout(action, timeout);
             this.transitionTimeouts.push(timeoutHandle);
         };
-        AnimatedItem.prototype.transition = function (transitionName, done) {
+        AnimatedItem.prototype.transition = function (transitionName, done, onStart, onStartTransition, onEnd) {
             var _this = this;
-            if (this.props.shouldSuspendAnimations()) {
+            if (this.props.shouldSuspendAnimations && this.props.shouldSuspendAnimations()) {
                 done();
                 return;
             }
-            var node = ReactDOM.findDOMNode(this);
-            var animationClassName = this.getAnimationClassName() + transitionName;
-            node.classList.add(animationClassName);
+            var element = ReactDOM.findDOMNode(this);
+            var animationClassName = this.getAnimationClassName(element) + transitionName;
+            onStart(element);
+            element.classList.add(animationClassName);
             this.queueAction(function () {
-                node.classList.add(animationClassName + ANIMATION_ACTIVE);
-                var nodeStyle = getComputedStyle(node);
-                var animationDuration = parseFloat(nodeStyle.transitionDelay) + parseFloat(nodeStyle.transitionDuration);
+                element.classList.add(animationClassName + ANIMATION_ACTIVE);
+                var elementStyle = getComputedStyle(element);
+                var animationDuration = parseFloat(elementStyle.transitionDelay) + parseFloat(elementStyle.transitionDuration);
+                onStartTransition(element);
                 var animationEnd = function () {
-                    node.classList.remove(animationClassName);
-                    node.classList.remove(animationClassName + ANIMATION_ACTIVE);
+                    element.classList.remove(animationClassName);
+                    element.classList.remove(animationClassName + ANIMATION_ACTIVE);
+                    onEnd(element);
                     done();
                 };
                 _this.queueAction(animationEnd, animationDuration * 1000);
             }, TICK);
         };
         AnimatedItem.prototype.componentWillEnter = function (done) {
-            this.transition(ANIMATION_ENTER, done);
+            var _this = this;
+            this.transition(ANIMATION_ENTER, done, function (element) { return _this.startEnter(element); }, function (element) { return _this.startEnterTransition(element); }, function (element) { return _this.endEnter(element); });
         };
+        AnimatedItem.prototype.startEnter = function (element) { };
+        AnimatedItem.prototype.startEnterTransition = function (element) { };
+        AnimatedItem.prototype.endEnter = function (element) { };
         AnimatedItem.prototype.componentWillLeave = function (done) {
-            this.transition(ANIMATION_LEAVE, done);
+            var _this = this;
+            this.transition(ANIMATION_LEAVE, done, function (element) { return _this.startLeave(element); }, function (element) { return _this.startLeaveTransition(element); }, function (element) { return _this.endLeave(element); });
         };
+        AnimatedItem.prototype.startLeave = function (element) { };
+        AnimatedItem.prototype.startLeaveTransition = function (element) { };
+        AnimatedItem.prototype.endLeave = function (element) { };
         AnimatedItem.prototype.componentWillUnmount = function () {
             this.transitionTimeouts.forEach(function (t) { return clearTimeout(t); });
             this.transitionTimeouts = [];
         };
         AnimatedItem.prototype.render = function () {
-            return this.props.children;
+            return React.Children.only(this.props.children);
         };
         return AnimatedItem;
     }(React.Component));
+    exports.AnimatedItem = AnimatedItem;
 });

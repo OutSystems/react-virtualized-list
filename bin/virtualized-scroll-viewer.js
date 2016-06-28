@@ -3,7 +3,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-define(["require", "exports", "react", "react-dom", "extensions"], function (require, exports, React, ReactDOM, extensions_1) {
+define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-extensions"], function (require, exports, React, ReactDOM, virtualized_scroll_viewer_extensions_1) {
     "use strict";
     var SCROLL_EVENT_NAME = "scroll";
     var RESIZE_EVENT_NAME = "resize";
@@ -12,7 +12,7 @@ define(["require", "exports", "react", "react-dom", "extensions"], function (req
         __extends(VirtualizedScrollViewer, _super);
         function VirtualizedScrollViewer(props, context) {
             _super.call(this, props, context);
-            this.scrollDirection = extensions_1.ScrollDirection.Vertical;
+            this.scrollDirection = virtualized_scroll_viewer_extensions_1.ScrollExtensions.ScrollDirection.Vertical;
             this.pendingPropertiesUpdate = false;
             this.isScrollOngoing = false;
             this.scrollHandler = this.handleScroll.bind(this);
@@ -27,34 +27,30 @@ define(["require", "exports", "react", "react-dom", "extensions"], function (req
         }
         VirtualizedScrollViewer.prototype.getScrollHostInfo = function () {
             if (!this.scrollHostInfo) {
-                this.scrollHostInfo = extensions_1.getScrollHostInfo(this.itemsContainer);
+                this.scrollHostInfo = virtualized_scroll_viewer_extensions_1.ScrollExtensions.getScrollHostInfo(this.itemsContainer);
             }
             return this.scrollHostInfo;
         };
         VirtualizedScrollViewer.prototype.getScrollInfo = function () {
-            var scrollHostInfo = this.getScrollHostInfo();
-            var scrollInfo;
-            var scrollHost = scrollHostInfo.scrollHost;
+            var scrollInfo = virtualized_scroll_viewer_extensions_1.ScrollExtensions.getScrollInfo(this.getScrollHostInfo());
+            var scrollHost = scrollInfo.scrollHost;
+            var result = {
+                scrollHost: scrollHost,
+                scrollOffset: this.getDimension(scrollInfo.scrollY, scrollInfo.scrollX),
+                viewportSize: this.getDimension(scrollInfo.viewport.height, scrollInfo.viewport.width),
+                viewportLowerBound: 0,
+                viewportUpperBound: 0,
+            };
             if (scrollHost instanceof Window) {
-                return {
-                    scrollHost: scrollHost,
-                    scrollOffset: this.getDimension(scrollHost.scrollY, scrollHost.scrollX),
-                    viewportSize: this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth),
-                    viewportLowerBound: this.getDimension(0, 0),
-                    viewportUpperBound: this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth),
-                };
+                result.viewportLowerBound = this.getDimension(scrollInfo.viewport.y, scrollInfo.viewport.x);
+                result.viewportUpperBound = this.getDimension(scrollInfo.viewport.height, scrollInfo.viewport.width);
             }
             else if (scrollHost instanceof HTMLElement) {
                 var bounds = scrollHost.getBoundingClientRect();
-                return {
-                    scrollHost: scrollHost,
-                    scrollOffset: this.getDimension(scrollHost.scrollTop, scrollHost.scrollLeft),
-                    viewportSize: this.getDimension(scrollHost.clientHeight, scrollHost.clientWidth),
-                    viewportLowerBound: this.getDimension(bounds.top, bounds.left),
-                    viewportUpperBound: this.getDimension(bounds.bottom, bounds.right),
-                };
+                result.viewportLowerBound = this.getDimension(bounds.top, bounds.left);
+                result.viewportUpperBound = this.getDimension(bounds.bottom, bounds.right);
             }
-            return null;
+            return result;
         };
         VirtualizedScrollViewer.prototype.addScrollHandler = function () {
             var scrollHost = this.getScrollHostInfo().scrollHost;
@@ -134,7 +130,7 @@ define(["require", "exports", "react", "react-dom", "extensions"], function (req
             var style = {
                 display: "inline-block"
             };
-            if (this.scrollDirection === extensions_1.ScrollDirection.Horizontal) {
+            if (this.scrollDirection === virtualized_scroll_viewer_extensions_1.ScrollExtensions.ScrollDirection.Horizontal) {
                 style.width = Math.round(dimension) + PIXEL_UNITS;
                 style.height = FILL_SPACE;
             }
@@ -148,7 +144,7 @@ define(["require", "exports", "react", "react-dom", "extensions"], function (req
             return this.renderList(this.state.firstVisibleItemIndex, this.state.lastVisibleItemIndex);
         };
         VirtualizedScrollViewer.prototype.getDimension = function (vertical, horizontal) {
-            return this.scrollDirection === extensions_1.ScrollDirection.Horizontal ? horizontal : vertical;
+            return this.scrollDirection === virtualized_scroll_viewer_extensions_1.ScrollExtensions.ScrollDirection.Horizontal ? horizontal : vertical;
         };
         VirtualizedScrollViewer.prototype.getListItems = function (itemsContainer) {
             var items = [];
@@ -168,7 +164,7 @@ define(["require", "exports", "react", "react-dom", "extensions"], function (req
                 top: bounds.top,
                 bottom: bounds.bottom
             };
-            if (this.scrollDirection === extensions_1.ScrollDirection.Horizontal) {
+            if (this.scrollDirection === virtualized_scroll_viewer_extensions_1.ScrollExtensions.ScrollDirection.Horizontal) {
                 if (rect.width < MIN_SIZE) {
                     rect.width = MIN_SIZE;
                     rect.right = rect.left + rect.width;
@@ -216,7 +212,6 @@ define(["require", "exports", "react", "react-dom", "extensions"], function (req
                     itemsEnteringCount: 0
                 };
             }
-            var viewportAbsolutePosition = 0;
             var scrollInfo = this.getScrollInfo();
             var averageItemSize = this.calculateAverageItemsSize(items);
             if (this.state.averageItemSize !== 0) {
@@ -293,6 +288,13 @@ define(["require", "exports", "react", "react-dom", "extensions"], function (req
             enumerable: true,
             configurable: true
         });
+        VirtualizedScrollViewer.prototype.setScrollOffset = function (x, y) {
+            var scrollInfo = this.getScrollInfo();
+            var scrollHost = scrollInfo.scrollHost;
+            var scrollX = this.getDimension(0, x);
+            var scrollY = this.getDimension(y, 0);
+            virtualized_scroll_viewer_extensions_1.ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY);
+        };
         return VirtualizedScrollViewer;
     }(React.Component));
     exports.VirtualizedScrollViewer = VirtualizedScrollViewer;
