@@ -2,12 +2,12 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { VirtualizedList } from "virtualized-list";
 
-class App extends React.Component<{}, { items: number}> {
+class App extends React.Component<{}, { items: number }> {
     
     constructor() {
         super();
         this.state = {
-            items: 0
+            items: 100
         };
     }
     
@@ -15,6 +15,11 @@ class App extends React.Component<{}, { items: number}> {
         this.setState({ 
             items: parseInt((this.refs["itemsCount"] as HTMLInputElement).value)
         });
+    }
+    
+    setScroll() {
+        let offset = parseInt( (this.refs["scrollOffset"] as HTMLInputElement).value);
+        (this.refs["list"] as VirtualizedList).setScrollOffset(offset);
     }
     
     render() {
@@ -29,7 +34,11 @@ class App extends React.Component<{}, { items: number}> {
                 <input ref="itemsCount" placeholder="Number of items" defaultValue={this.state.items + ""} />
                 <button onClick={this.refresh.bind(this)}>Refresh</button>
                 <br/>
-                <VirtualizedList list={list}/>
+                <br/>
+                <input ref="scrollOffset" placeholder="Scroll offset" defaultValue={this.state.items + ""} />
+                <button onClick={this.setScroll.bind(this)}>Set Scroll</button>
+                <br/>
+                <VirtualizedList ref="list" list={list}/>
             </div>);
     }
 }

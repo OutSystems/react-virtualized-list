@@ -1,12 +1,12 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { ScrollDirection, IScrollHostInfo, getScrollHostInfo } from "extensions";
+import { ScrollExtensions } from "virtualized-scroll-viewer-extensions";
 
 const SCROLL_EVENT_NAME = "scroll";
 const RESIZE_EVENT_NAME = "resize";
 const PIXEL_UNITS = "px";
 
-export interface IScrollViewerProperties {
+export interface IScrollViewerProperties extends React.Props<VirtualizedScrollViewer> {
     length: number;
     renderItems: (startIndex: number, length: number) => React.ReactFragment;
     scrollChanged?: () => void;
@@ -14,20 +14,20 @@ export interface IScrollViewerProperties {
 }
 
 interface IScrollInfo {
-    scrollHost: HTMLElement | Window;
+    scrollHost: Element | Window;
     viewportSize: number;
     scrollOffset: number;
     viewportLowerBound: number;
     viewportUpperBound: number;
 }
 
-interface IScrollViewerState {
+export interface IScrollViewerState {
     firstVisibleItemIndex: number;
     lastVisibleItemIndex: number;
     averageItemSize: number;
     scrollOffset: number; // scroll compensation for missing items
     effectiveScrollValue: number; // scroll value of the scroll host
-    itemsEnteringCount: number // stores the number entering viewport in the last render frame
+    itemsEnteringCount: number; // stores the number entering viewport in the last render frame
 }
 
 type Rect = {
@@ -42,8 +42,8 @@ type Rect = {
 export class VirtualizedScrollViewer extends React.Component<IScrollViewerProperties, IScrollViewerState> {
     
     private scrollHandler: () => void;
-    private scrollHostInfo: IScrollHostInfo;
-    private scrollDirection: ScrollDirection = ScrollDirection.Vertical;
+    private scrollHostInfo: ScrollExtensions.IScrollHostInfo;
+    private scrollDirection: ScrollExtensions.ScrollDirection = ScrollExtensions.ScrollDirection.Vertical;
     private pendingPropertiesUpdate: boolean = false;
     private pendingScrollAsyncUpdateHandle: number;
     private itemsContainer: HTMLElement;
@@ -65,9 +65,9 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     /**
      * The element that owns the scrollbars
      */
-    private getScrollHostInfo(): IScrollHostInfo {
+    private getScrollHostInfo(): ScrollExtensions.IScrollHostInfo {
         if (!this.scrollHostInfo) {
-            this.scrollHostInfo = getScrollHostInfo(this.itemsContainer);
+            this.scrollHostInfo = ScrollExtensions.getScrollHostInfo(this.itemsContainer);
         }
 
         return this.scrollHostInfo;
@@ -77,30 +77,26 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Scroll information: the element that has the scrollbar, its viewport size and the scroll position
      */
     private getScrollInfo(): IScrollInfo {
-        let scrollHostInfo = this.getScrollHostInfo();
-        let scrollInfo: IScrollInfo;
-        let scrollHost = scrollHostInfo.scrollHost;
+        let scrollInfo = ScrollExtensions.getScrollInfo(this.getScrollHostInfo());
+        let scrollHost = scrollInfo.scrollHost;
+        let result = {
+            scrollHost: scrollHost,
+            scrollOffset: this.getDimension(scrollInfo.scrollY, scrollInfo.scrollX),
+            viewportSize: this.getDimension(scrollInfo.viewport.height, scrollInfo.viewport.width),
+            viewportLowerBound: 0,
+            viewportUpperBound: 0,
+        };
         
         if (scrollHost instanceof Window) {
-            return {
-                scrollHost: scrollHost,
-                scrollOffset: this.getDimension(scrollHost.scrollY, scrollHost.scrollX),
-                viewportSize: this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth),
-                viewportLowerBound: this.getDimension(0, 0),
-                viewportUpperBound: this.getDimension(scrollHost.innerHeight, scrollHost.innerWidth),
-            };
+            result.viewportLowerBound = this.getDimension(scrollInfo.viewport.y, scrollInfo.viewport.x);
+            result.viewportUpperBound = this.getDimension(scrollInfo.viewport.height, scrollInfo.viewport.width);
         } else if (scrollHost instanceof HTMLElement) {
             let bounds = scrollHost.getBoundingClientRect();
-            return {
-                scrollHost: scrollHost,
-                scrollOffset: this.getDimension(scrollHost.scrollTop, scrollHost.scrollLeft),
-                viewportSize: this.getDimension(scrollHost.clientHeight, scrollHost.clientWidth),
-                viewportLowerBound: this.getDimension(bounds.top, bounds.left),
-                viewportUpperBound: this.getDimension(bounds.bottom, bounds.right),
-            };
+            result.viewportLowerBound = this.getDimension(bounds.top, bounds.left);
+            result.viewportUpperBound = this.getDimension(bounds.bottom, bounds.right);
         }
         
-        return null;
+        return result;
     }
     
     /**
@@ -173,7 +169,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         });
     }
     
-    private shallUpdateState(state: IScrollViewerState) {
+    private shallUpdateState(state: IScrollViewerState): boolean {
         return state.firstVisibleItemIndex !== this.state.firstVisibleItemIndex ||
                state.lastVisibleItemIndex !== this.state.lastVisibleItemIndex;
     }
@@ -209,7 +205,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let style: React.CSSProperties = {
             display: "inline-block"
         };
-        if (this.scrollDirection === ScrollDirection.Horizontal) {
+        if (this.scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
             style.width = Math.round(dimension) + PIXEL_UNITS;
             style.height = FILL_SPACE;
         } else {
@@ -228,7 +224,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Returns the appropriate dimension according to the scroll direction
      */
     private getDimension(vertical: number, horizontal: number): number {
-        return this.scrollDirection === ScrollDirection.Horizontal ? horizontal : vertical;
+        return this.scrollDirection === ScrollExtensions.ScrollDirection.Horizontal ? horizontal : vertical;
     }
     
     /**
@@ -254,7 +250,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             top: bounds.top,
             bottom: bounds.bottom
         };
-        if (this.scrollDirection === ScrollDirection.Horizontal) {
+        if (this.scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
             if (rect.width < MIN_SIZE) {
                 rect.width = MIN_SIZE;
                 rect.right = rect.left + rect.width;
@@ -326,7 +322,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             };
         }
         
-        let viewportAbsolutePosition = 0;
         let scrollInfo = this.getScrollInfo();
         
         let averageItemSize = this.calculateAverageItemsSize(items);
@@ -425,5 +420,13 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     
     public get isScrolling(): boolean {
         return this.isScrollOngoing;
+    }
+    
+    public setScrollOffset(x: number, y: number): void {
+        let scrollInfo = this.getScrollInfo();
+        let scrollHost = scrollInfo.scrollHost;
+        let scrollX = this.getDimension(0, x);
+        let scrollY = this.getDimension(y, 0);
+        ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY);
     }
 }

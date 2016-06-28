@@ -47,4 +47,8 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
                                      ref={SCROLL_VIEWER_COMPONENT_REF} />
         );
     }
+    
+    public setScrollOffset(offset: number): void {
+        (this.refs[SCROLL_VIEWER_COMPONENT_REF] as VirtualizedScrollViewer).setScrollOffset(0, offset);
+    }
 }

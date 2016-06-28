@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import * as Extensions from "extensions";
+import { ObjectExtensions } from "virtualized-scroll-viewer-extensions";
 
 const ANIMATION_ENTER = "-enter";
 const ANIMATION_LEAVE = "-leave";
@@ -16,20 +16,20 @@ export interface IAnimatedAttributes extends React.HTMLProps<any>, React.Transit
 export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {
 
     private wrapChild(child: any): React.ReactElement<any> {
-        let childAttributes : IAnimatedAttributes = {
-          shouldSuspendAnimations: this.props.shouldSuspendAnimations,
-          transitionName: this.props.transitionName  
+        let childAttributes: IAnimatedAttributes = {
+            shouldSuspendAnimations: this.props.shouldSuspendAnimations,
+            transitionName: this.props.transitionName  
         };
         return React.createElement(
             AnimatedItem, 
-            Extensions.assign({}, child.props, childAttributes),
+            <IAnimatedAttributes> ObjectExtensions.assign({}, child.props, childAttributes),
             child);
     }
 
     public render(): any {
         return React.createElement(
             React.addons.TransitionGroup,
-            Extensions.assign({}, this.props, { childFactory: this.wrapChild.bind(this) }), 
+            ObjectExtensions.assign({}, this.props, { childFactory: this.wrapChild.bind(this) }), 
             this.props.children);
     }
 
@@ -43,12 +43,12 @@ class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
         return this.props.transitionName;
     }
 
-    private queueAction(action: Function, timeout: number) {
+    private queueAction(action: Function, timeout: number): void {
         let timeoutHandle = setTimeout(action, timeout);
         this.transitionTimeouts.push(timeoutHandle);
     }
     
-    private transition(transitionName: string, done: Function) {
+    private transition(transitionName: string, done: Function): void {
         if (this.props.shouldSuspendAnimations()) {
             done();
             return;
@@ -89,7 +89,7 @@ class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
         this.transitionTimeouts = [];
     }
 
-    public render(): any {
-        return this.props.children;
+    public render(): JSX.Element {
+        return React.Children.only(this.props.children);
     }
 }
