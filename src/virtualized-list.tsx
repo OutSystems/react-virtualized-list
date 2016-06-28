@@ -1,6 +1,7 @@
 import * as React from "react";
 import { VirtualizedScrollViewer } from "virtualized-scroll-viewer";
 import { AnimatedGroup, IAnimatedAttributes } from "animated-group";
+import { AnimatedSizeGroup } from "animated-size-group";
 
 const SCROLL_VIEWER_COMPONENT_REF = "scrollViewer";
 
@@ -13,8 +14,13 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
     private scrollViewer: VirtualizedScrollViewer;
     
     private renderItem(index: number) {
-        let className = "list-item " + (index % 2 === 0 ? "even" : "odd");
-        return <div key={"i-" + index} className={className}>Item {this.props.list[index]}</div>;
+        let even = index % 2 === 0;
+        let className = "list-item " + (even ? "even" : "odd");
+        return (
+            <div key={"i-" + index} className={className}>
+                Item {this.props.list[index]}
+                <div className="spacer"/>
+            </div>);
     }
     
     private renderItems(startIndex: number, length: number) {
@@ -36,7 +42,7 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
             shouldSuspendAnimations: () => this.getScrollViewer().isScrolling,
             transitionName: "example"
          };
-        return React.createElement(AnimatedGroup, listAttributes, children);
+        return React.createElement(AnimatedSizeGroup, listAttributes, children);
     }
     
     public render() {

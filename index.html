@@ -10,32 +10,41 @@
         }
         
         .list-item {
-            height: 60px;
             border-bottom: 1px solid lightsteelblue;
             background: rgb(230, 230, 230)
         }
         
         .list-item.odd {
-           height: 100px;
            background: rgb(200, 200, 200)
         }
         
-        .example-enter {
-            max-height: 0px;
+        .list-item .spacer {
+            height: 40px;
         }
-
-        .example-enter.example-enter-active {
-            max-height: 200px;
-            transition: max-height 1s ease-in;
+         
+        .list-item.odd .spacer {
+            height: 70px;
         }
         
-        .example-leave {
-            max-height: 200px;
+        .list-item.example-enter,
+        .list-item.odd.example-enter {
+            height: 0px;
         }
 
-        .example-leave.example-leave-active {
-            max-height: 0;
-            transition: max-height 1s ease-in;
+        .list-item.example-enter-active,
+        .list-item.odd.example-enter-active {
+            transition: height 1s ease-in;
+        }
+        
+        .list-item.example-leave,
+        .list-item.odd.example-leave {
+            /*transition: height 1s ease-in;*/
+        }
+        
+        .list-item.example-leave-active,
+        .list-item.odd.example-leave-active {
+            height: 0px;
+            transition: height 1s ease-in;
         }
         
     </style>
