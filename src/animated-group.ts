@@ -12,7 +12,7 @@ type TransitionCallback = (element: HTMLElement) => void;
 
 export interface IAnimatedAttributes extends React.HTMLProps<any>, React.TransitionGroupProps {
     shouldSuspendAnimations: () => boolean;
-    transitionName: string;
+    transitionName?: string;
 }
 
 export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {

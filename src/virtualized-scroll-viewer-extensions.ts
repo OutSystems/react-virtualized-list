@@ -13,11 +13,12 @@ export module ScrollExtensions {
         scrollDirection: ScrollDirection;
     }
     
+    export type Rect = { x: number, y: number, height: number, width: number };
+    
     export interface IScrollInfo {
         scrollHost: Element | Window;
-        viewport: { x: number, y: number, height: number, width: number };
-        scrollX: number;
-        scrollY: number;
+        viewport: Rect;
+        scroll: Rect;
     }
 
     // returns the first DOM element that is scrollable implementation copied from jquery .scrollParent()
@@ -55,16 +56,34 @@ export module ScrollExtensions {
         if (scrollHost instanceof Window) {
             return {
                 scrollHost: scrollHost,
-                scrollX: scrollHost.scrollX,
-                scrollY: scrollHost.scrollY, 
-                viewport: { x: 0, y: 0, height: scrollHost.innerHeight, width: scrollHost.innerWidth }
+                scroll: { 
+                    x: scrollHost.scrollX, 
+                    y: scrollHost.scrollY, 
+                    height: document.body.scrollHeight, 
+                    width: document.body.scrollWidth 
+                },
+                viewport: { 
+                    x: 0, 
+                    y: 0, 
+                    height: scrollHost.innerHeight, 
+                    width: scrollHost.innerWidth 
+                }
             };
         } else if (scrollHost instanceof HTMLElement) {
             return {
                 scrollHost: scrollHost,
-                scrollX:  scrollHost.scrollLeft,
-                scrollY: scrollHost.scrollTop,
-                viewport: { x: 0, y: 0, height: scrollHost.clientHeight, width: scrollHost.clientWidth }
+                scroll: { 
+                    x: scrollHost.scrollLeft, 
+                    y: scrollHost.scrollTop, 
+                    height: scrollHost.scrollHeight, 
+                    width: scrollHost.scrollWidth 
+                },
+                viewport: { 
+                    x: 0, 
+                    y: 0, 
+                    height: scrollHost.clientHeight, 
+                    width: scrollHost.clientWidth 
+                }
             };
         }
         

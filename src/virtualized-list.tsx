@@ -23,6 +23,10 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
             </div>);
     }
     
+    public componentDidMount() {
+        (this.refs[SCROLL_VIEWER_COMPONENT_REF] as VirtualizedScrollViewer).setScrollOffset(0, 1000);
+    }
+    
     private renderItems(startIndex: number, length: number) {
         let items: JSX.Element[] = [];
         for (let i = startIndex; i < startIndex + length; i++) {
@@ -41,7 +45,7 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
             component: "div",
             shouldSuspendAnimations: () => this.getScrollViewer().isScrolling,
             transitionName: "example"
-         };
+        };
         return React.createElement(AnimatedSizeGroup, listAttributes, children);
     }
     

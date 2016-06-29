@@ -44,10 +44,12 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     private scrollHandler: () => void;
     private scrollHostInfo: ScrollExtensions.IScrollHostInfo;
     private scrollDirection: ScrollExtensions.ScrollDirection = ScrollExtensions.ScrollDirection.Vertical;
-    private pendingPropertiesUpdate: boolean = false;
+    private hasPendingPropertiesUpdate: boolean = false;
     private pendingScrollAsyncUpdateHandle: number;
     private itemsContainer: HTMLElement;
     private isScrollOngoing: boolean = false; // true when rendering to due scroll changes
+    private isInitialized: boolean = false;
+    private setPendingScroll: () => void;
     
     constructor(props: IScrollViewerProperties, context: any) {
         super(props, context);
@@ -81,7 +83,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let scrollHost = scrollInfo.scrollHost;
         let result = {
             scrollHost: scrollHost,
-            scrollOffset: this.getDimension(scrollInfo.scrollY, scrollInfo.scrollX),
+            scrollOffset: this.getDimension(scrollInfo.scroll.y, scrollInfo.scroll.x),
             viewportSize: this.getDimension(scrollInfo.viewport.height, scrollInfo.viewport.width),
             viewportLowerBound: 0,
             viewportUpperBound: 0,
@@ -133,16 +135,23 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     
     public componentWillReceiveProps(nextProps: IScrollViewerProperties): void {
         this.setState(this.getCurrentScrollViewerState(nextProps.length)); // rerender with the right amount of items in the viewport
-        this.pendingPropertiesUpdate = true;
+        this.hasPendingPropertiesUpdate = true;
     }
     
     public componentDidUpdate(): void {
+        this.isInitialized = true; // we render twice before initialization complete
         this.itemsContainer = ReactDOM.findDOMNode(this) as HTMLElement;
-        if (this.pendingPropertiesUpdate || this.state.itemsEnteringCount > 0) {
+        
+        if (this.setPendingScroll) {
+            this.setPendingScroll();
+            this.setPendingScroll = null;
+        } 
+        
+        if (this.hasPendingPropertiesUpdate || this.state.itemsEnteringCount > 0) {
             // updated with list changes, let's compute the visible items
             // or new items entering (in this render frame), calculate scroll compensation based on items real size
             this.setState(this.getCurrentScrollViewerState(this.props.length));
-            this.pendingPropertiesUpdate = false;
+            this.hasPendingPropertiesUpdate = false;
         }
     }
     
@@ -427,6 +436,12 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let scrollHost = scrollInfo.scrollHost;
         let scrollX = this.getDimension(0, x);
         let scrollY = this.getDimension(y, 0);
-        ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY);
+        let updateScroll = () => { ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY) };
+        if (!this.isInitialized) {
+            // not all items rendered yet, schedule scroll updates for later
+            this.setPendingScroll = updateScroll; 
+        } else {
+            updateScroll();
+        }
     }
 }
