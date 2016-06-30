@@ -13,8 +13,9 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
         function VirtualizedScrollViewer(props, context) {
             _super.call(this, props, context);
             this.scrollDirection = virtualized_scroll_viewer_extensions_1.ScrollExtensions.ScrollDirection.Vertical;
-            this.pendingPropertiesUpdate = false;
+            this.hasPendingPropertiesUpdate = false;
             this.isScrollOngoing = false;
+            this.isComponentInitialized = false;
             this.scrollHandler = this.handleScroll.bind(this);
             this.state = {
                 firstVisibleItemIndex: 0,
@@ -36,7 +37,7 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
             var scrollHost = scrollInfo.scrollHost;
             var result = {
                 scrollHost: scrollHost,
-                scrollOffset: this.getDimension(scrollInfo.scrollY, scrollInfo.scrollX),
+                scrollOffset: this.getDimension(scrollInfo.scroll.y, scrollInfo.scroll.x),
                 viewportSize: this.getDimension(scrollInfo.viewport.height, scrollInfo.viewport.width),
                 viewportLowerBound: 0,
                 viewportUpperBound: 0,
@@ -76,13 +77,18 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
         };
         VirtualizedScrollViewer.prototype.componentWillReceiveProps = function (nextProps) {
             this.setState(this.getCurrentScrollViewerState(nextProps.length));
-            this.pendingPropertiesUpdate = true;
+            this.hasPendingPropertiesUpdate = true;
         };
         VirtualizedScrollViewer.prototype.componentDidUpdate = function () {
+            this.isComponentInitialized = true;
             this.itemsContainer = ReactDOM.findDOMNode(this);
-            if (this.pendingPropertiesUpdate || this.state.itemsEnteringCount > 0) {
+            if (this.setPendingScroll) {
+                this.setPendingScroll();
+                this.setPendingScroll = null;
+            }
+            if (this.hasPendingPropertiesUpdate || this.state.itemsEnteringCount > 0) {
                 this.setState(this.getCurrentScrollViewerState(this.props.length));
-                this.pendingPropertiesUpdate = false;
+                this.hasPendingPropertiesUpdate = false;
             }
         };
         VirtualizedScrollViewer.prototype.handleScroll = function () {
@@ -228,16 +234,20 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
             if (this.state.itemsEnteringCount === 0) {
                 if (scrollInfo.scrollOffset > this.state.effectiveScrollValue) {
                     var firstItemIndexInViewport = -1;
+                    var sizeOfItemsLeavingOnNextRender = 0;
                     var viewportLowerMargin_1 = scrollInfo.viewportLowerBound - viewportSafetyMargin;
+                    var firstItemBounds = this.getItemBounds(items[0]);
+                    var firstItemLowerBound = this.getDimension(firstItemBounds.top, firstItemBounds.left);
                     for (var i = 0; i < items.length; i++) {
                         var itemBounds = this.getItemBounds(items[i]);
-                        if (this.getDimension(itemBounds.bottom, itemBounds.right) > viewportLowerMargin_1) {
+                        var itemSize = this.getDimension(itemBounds.height, itemBounds.width);
+                        if ((firstItemLowerBound + sizeOfItemsLeavingOnNextRender + itemSize) > viewportLowerMargin_1) {
                             firstItemIndexInViewport = i;
                             break;
                         }
+                        sizeOfItemsLeavingOnNextRender += itemSize;
                     }
                     if (firstItemIndexInViewport > 0) {
-                        var sizeOfItemsLeavingOnNextRender = this.calculateItemsSize(items, 0, firstItemIndexInViewport - 1);
                         firstVisibleItemIndex += firstItemIndexInViewport;
                         scrollOffset += sizeOfItemsLeavingOnNextRender;
                     }
@@ -258,7 +268,7 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
                     }
                 }
                 if (largeScrollChange) {
-                    firstVisibleItemIndex = Math.max(0, Math.floor(scrollInfo.scrollOffset / averageItemSize));
+                    firstVisibleItemIndex = Math.max(0, Math.floor((scrollInfo.scrollOffset - viewportSafetyMargin) / averageItemSize));
                     scrollOffset = Math.round(firstVisibleItemIndex * averageItemSize);
                 }
             }
@@ -288,12 +298,25 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
             enumerable: true,
             configurable: true
         });
+        Object.defineProperty(VirtualizedScrollViewer.prototype, "isInitialized", {
+            get: function () {
+                return this.isComponentInitialized;
+            },
+            enumerable: true,
+            configurable: true
+        });
         VirtualizedScrollViewer.prototype.setScrollOffset = function (x, y) {
             var scrollInfo = this.getScrollInfo();
             var scrollHost = scrollInfo.scrollHost;
             var scrollX = this.getDimension(0, x);
             var scrollY = this.getDimension(y, 0);
-            virtualized_scroll_viewer_extensions_1.ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY);
+            var updateScroll = function () { virtualized_scroll_viewer_extensions_1.ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY); };
+            if (this.isInitialized) {
+                updateScroll();
+            }
+            else {
+                this.setPendingScroll = updateScroll;
+            }
         };
         return VirtualizedScrollViewer;
     }(React.Component));

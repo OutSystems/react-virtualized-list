@@ -16,6 +16,9 @@ define(["require", "exports", "react", "virtualized-scroll-viewer", "animated-si
             var className = "list-item " + (even ? "even" : "odd");
             return (React.createElement("div", {key: "i-" + index, className: className}, "Item ", this.props.list[index], React.createElement("div", {className: "spacer"})));
         };
+        VirtualizedList.prototype.componentDidMount = function () {
+            this.getScrollViewer().setScrollOffset(0, 1000);
+        };
         VirtualizedList.prototype.renderItems = function (startIndex, length) {
             var items = [];
             for (var i = startIndex; i < startIndex + length; i++) {
@@ -26,12 +29,20 @@ define(["require", "exports", "react", "virtualized-scroll-viewer", "animated-si
         VirtualizedList.prototype.getScrollViewer = function () {
             return this.refs[SCROLL_VIEWER_COMPONENT_REF];
         };
+        Object.defineProperty(VirtualizedList.prototype, "shouldSuspendAnimations", {
+            get: function () {
+                var scrollViewer = this.getScrollViewer();
+                return !scrollViewer || !scrollViewer.isInitialized || scrollViewer.isScrolling;
+            },
+            enumerable: true,
+            configurable: true
+        });
         VirtualizedList.prototype.createScrollViewerContainer = function (children) {
             var _this = this;
             var listAttributes = {
                 className: "list",
                 component: "div",
-                shouldSuspendAnimations: function () { return _this.getScrollViewer().isScrolling; },
+                shouldSuspendAnimations: function () { return _this.shouldSuspendAnimations; },
                 transitionName: "example"
             };
             return React.createElement(animated_size_group_1.AnimatedSizeGroup, listAttributes, children);
@@ -41,7 +52,7 @@ define(["require", "exports", "react", "virtualized-scroll-viewer", "animated-si
             return (React.createElement(virtualized_scroll_viewer_1.VirtualizedScrollViewer, {renderItems: function (start, length) { return _this.renderItems(start, length); }, renderWrapper: function (children) { return _this.createScrollViewerContainer(children); }, length: this.props.list.length, ref: SCROLL_VIEWER_COMPONENT_REF}));
         };
         VirtualizedList.prototype.setScrollOffset = function (offset) {
-            this.refs[SCROLL_VIEWER_COMPONENT_REF].setScrollOffset(0, offset);
+            this.getScrollViewer().setScrollOffset(0, offset);
         };
         return VirtualizedList;
     }(React.Component));

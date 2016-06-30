@@ -48,7 +48,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     private pendingScrollAsyncUpdateHandle: number;
     private itemsContainer: HTMLElement;
     private isScrollOngoing: boolean = false; // true when rendering to due scroll changes
-    private isInitialized: boolean = false;
+    private isComponentInitialized: boolean = false;
     private setPendingScroll: () => void;
     
     constructor(props: IScrollViewerProperties, context: any) {
@@ -139,7 +139,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     }
     
     public componentDidUpdate(): void {
-        this.isInitialized = true; // we render twice before initialization complete
+        this.isComponentInitialized = true; // we render twice before initialization complete
         this.itemsContainer = ReactDOM.findDOMNode(this) as HTMLElement;
         
         if (this.setPendingScroll) {
@@ -225,7 +225,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     }
     
     public render(): JSX.Element {
-        // console.log(this.state.firstVisibleItemIndex + " " + this.state.scrollOffset + " " + this.state.averageItemSize);
+        //console.log(this.state.firstVisibleItemIndex + " " + this.state.scrollOffset + " " + this.state.averageItemSize);
         return this.renderList(this.state.firstVisibleItemIndex, this.state.lastVisibleItemIndex);
     }
     
@@ -359,21 +359,27 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             if (scrollInfo.scrollOffset > this.state.effectiveScrollValue) {
                 // scrolling down/right
                 
-                // find the first element that intersects the viewport
                 let firstItemIndexInViewport = -1;
+                let sizeOfItemsLeavingOnNextRender = 0;
                 let viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMargin;
+                let firstItemBounds = this.getItemBounds(items[0]);
+                let firstItemLowerBound = this.getDimension(firstItemBounds.top, firstItemBounds.left);
+                
+                // find the first element that intersects the viewport
+                // and calculate the size of the items that will leave viewport
                 for (let i = 0; i < items.length; i++) {
-                    let itemBounds = this.getItemBounds(items[i]);
-                    if (this.getDimension(itemBounds.bottom, itemBounds.right) > viewportLowerMargin) {
+                    let itemBounds = this.getItemBounds(items[i]); // consider a minimum size for each item
+                    let itemSize = this.getDimension(itemBounds.height, itemBounds.width);
+                     
+                    if ((firstItemLowerBound + sizeOfItemsLeavingOnNextRender + itemSize) > viewportLowerMargin) {
                         firstItemIndexInViewport = i;
                         break;
                     }
+                    
+                    sizeOfItemsLeavingOnNextRender += itemSize;
                 }
                  
                 if (firstItemIndexInViewport > 0) {
-                    // calculate the size of the items that will leave viewport
-                    let sizeOfItemsLeavingOnNextRender = this.calculateItemsSize(items, 0, firstItemIndexInViewport - 1);
-                    
                     firstVisibleItemIndex += firstItemIndexInViewport;
                     scrollOffset += sizeOfItemsLeavingOnNextRender; // compensate scroll with the size of the items leaving
                 } else if (firstItemIndexInViewport === -1) {
@@ -399,8 +405,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             }
             
             if (largeScrollChange) {
-                // calculate first item in viewport based on the average item size
-                firstVisibleItemIndex = Math.max(0, Math.floor(scrollInfo.scrollOffset / averageItemSize));
+                // calculate first item in viewport based on the average item size (and some margin)
+                firstVisibleItemIndex = Math.max(0, Math.floor((scrollInfo.scrollOffset - viewportSafetyMargin) / averageItemSize));
                 scrollOffset = Math.round(firstVisibleItemIndex * averageItemSize);
             }
         } else {
@@ -431,17 +437,21 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         return this.isScrollOngoing;
     }
     
+    public get isInitialized(): boolean {
+        return this.isComponentInitialized;
+    }
+    
     public setScrollOffset(x: number, y: number): void {
         let scrollInfo = this.getScrollInfo();
         let scrollHost = scrollInfo.scrollHost;
         let scrollX = this.getDimension(0, x);
         let scrollY = this.getDimension(y, 0);
         let updateScroll = () => { ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY) };
-        if (!this.isInitialized) {
-            // not all items rendered yet, schedule scroll updates for later
-            this.setPendingScroll = updateScroll; 
-        } else {
+        if (this.isInitialized) {
             updateScroll();
+        } else {
+            // not all items rendered yet, schedule scroll updates for later
+            this.setPendingScroll = updateScroll;
         }
     }
 }

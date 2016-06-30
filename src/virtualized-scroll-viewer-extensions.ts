@@ -92,7 +92,7 @@ export module ScrollExtensions {
     
     export function setScrollOffset(scrollHost: Element | Window, x: number, y: number): void {
         if (scrollHost instanceof Window) {
-            scrollHost.scroll(scrollX, scrollY);
+            scrollHost.scroll(x, y);
         } else {
             scrollHost.scrollTop = y;
             scrollHost.scrollLeft = x;

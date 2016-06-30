@@ -27,7 +27,7 @@ define(["require", "exports", "react", "react-dom", "virtualized-list"], functio
             for (var i = 0; i < this.state.items; i++) {
                 list.push(i);
             }
-            return (React.createElement("div", null, React.createElement("h1", null, "Virtualized list example"), React.createElement("br", null), React.createElement("input", {ref: "itemsCount", placeholder: "Number of items", defaultValue: this.state.items + ""}), React.createElement("button", {onClick: this.refresh.bind(this)}, "Refresh"), React.createElement("br", null), React.createElement("br", null), React.createElement("input", {ref: "scrollOffset", placeholder: "Scroll offset", defaultValue: this.state.items + ""}), React.createElement("button", {onClick: this.setScroll.bind(this)}, "Set Scroll"), React.createElement("br", null), React.createElement(virtualized_list_1.VirtualizedList, {ref: "list", list: list})));
+            return (React.createElement("div", null, React.createElement("h1", null, "Virtualized list example"), React.createElement("br", null), React.createElement("input", {ref: "itemsCount", placeholder: "Number of items", defaultValue: this.state.items + ""}), React.createElement("button", {onClick: this.refresh.bind(this)}, "Set Items"), React.createElement("br", null), React.createElement("br", null), React.createElement("input", {ref: "scrollOffset", placeholder: "Scroll offset", defaultValue: this.state.items + ""}), React.createElement("button", {onClick: this.setScroll.bind(this)}, "Set Scroll"), React.createElement("br", null), React.createElement("br", null), React.createElement(virtualized_list_1.VirtualizedList, {ref: "list", list: list})));
         };
         return App;
     }(React.Component));

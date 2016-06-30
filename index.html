@@ -3,9 +3,8 @@
     <script data-main="bin/index" src="bin/require.js"></script>
     <style>
         .list {
-            height: 300px;
-            overflow-y: scroll;
-            margin-top: 100px;
+            /*height: 300px;
+            overflow-y: scroll;*/
             border: 1px solid gray;
         }
         
@@ -26,25 +25,26 @@
             height: 70px;
         }
         
+        .list-item.example-appear,
+        .list-item.odd.example-appear,
         .list-item.example-enter,
         .list-item.odd.example-enter {
-            height: 0px;
+            height: 0;
+            transform: scale3d(1, 0, 1);
         }
 
+        .list-item.example-appear-active,
+        .list-item.odd.example-appear-active,
         .list-item.example-enter-active,
         .list-item.odd.example-enter-active {
-            transition: height 1s ease-in;
-        }
-        
-        .list-item.example-leave,
-        .list-item.odd.example-leave {
-            /*transition: height 1s ease-in;*/
+            transition: all 1s ease-in;
+            transform: scale3d(1, 1, 1);
         }
         
         .list-item.example-leave-active,
         .list-item.odd.example-leave-active {
             height: 0px;
-            transition: height 1s ease-in;
+            transition: all 1s ease-in;
         }
         
     </style>

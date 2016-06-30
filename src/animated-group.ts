@@ -2,6 +2,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { ObjectExtensions } from "virtualized-scroll-viewer-extensions";
 
+const ANIMATION_APPEAR = "-appear";
 const ANIMATION_ENTER = "-enter";
 const ANIMATION_LEAVE = "-leave";
 const ANIMATION_ACTIVE = "-active";
@@ -88,6 +89,14 @@ export class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
                 this.queueAction(animationEnd, animationDuration * 1000);
             }, 
             TICK);
+    }
+    
+    public componentWillAppear(done: Function): void {
+        this.transition(ANIMATION_APPEAR, 
+                        done, 
+                        (element: HTMLElement): void => this.startEnter(element),
+                        (element: HTMLElement): void => this.startEnterTransition(element),
+                        (element: HTMLElement): void => this.endEnter(element));
     }
     
     public componentWillEnter(done: Function): void {

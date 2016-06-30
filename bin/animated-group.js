@@ -5,6 +5,7 @@ var __extends = (this && this.__extends) || function (d, b) {
 };
 define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-extensions"], function (require, exports, React, ReactDOM, virtualized_scroll_viewer_extensions_1) {
     "use strict";
+    var ANIMATION_APPEAR = "-appear";
     var ANIMATION_ENTER = "-enter";
     var ANIMATION_LEAVE = "-leave";
     var ANIMATION_ACTIVE = "-active";
@@ -69,6 +70,10 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
                 };
                 _this.queueAction(animationEnd, animationDuration * 1000);
             }, TICK);
+        };
+        AnimatedItem.prototype.componentWillAppear = function (done) {
+            var _this = this;
+            this.transition(ANIMATION_APPEAR, done, function (element) { return _this.startEnter(element); }, function (element) { return _this.startEnterTransition(element); }, function (element) { return _this.endEnter(element); });
         };
         AnimatedItem.prototype.componentWillEnter = function (done) {
             var _this = this;

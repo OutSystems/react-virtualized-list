@@ -32,11 +32,12 @@ class App extends React.Component<{}, { items: number }> {
                 <h1>Virtualized list example</h1>
                 <br/>
                 <input ref="itemsCount" placeholder="Number of items" defaultValue={this.state.items + ""} />
-                <button onClick={this.refresh.bind(this)}>Refresh</button>
+                <button onClick={this.refresh.bind(this)}>Set Items</button>
                 <br/>
                 <br/>
                 <input ref="scrollOffset" placeholder="Scroll offset" defaultValue={this.state.items + ""} />
                 <button onClick={this.setScroll.bind(this)}>Set Scroll</button>
+                <br/>
                 <br/>
                 <VirtualizedList ref="list" list={list}/>
             </div>);

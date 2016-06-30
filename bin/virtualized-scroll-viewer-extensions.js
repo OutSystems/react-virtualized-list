@@ -37,17 +37,35 @@ define(["require", "exports"], function (require, exports) {
             if (scrollHost instanceof Window) {
                 return {
                     scrollHost: scrollHost,
-                    scrollX: scrollHost.scrollX,
-                    scrollY: scrollHost.scrollY,
-                    viewport: { x: 0, y: 0, height: scrollHost.innerHeight, width: scrollHost.innerWidth }
+                    scroll: {
+                        x: scrollHost.scrollX,
+                        y: scrollHost.scrollY,
+                        height: document.body.scrollHeight,
+                        width: document.body.scrollWidth
+                    },
+                    viewport: {
+                        x: 0,
+                        y: 0,
+                        height: scrollHost.innerHeight,
+                        width: scrollHost.innerWidth
+                    }
                 };
             }
             else if (scrollHost instanceof HTMLElement) {
                 return {
                     scrollHost: scrollHost,
-                    scrollX: scrollHost.scrollLeft,
-                    scrollY: scrollHost.scrollTop,
-                    viewport: { x: 0, y: 0, height: scrollHost.clientHeight, width: scrollHost.clientWidth }
+                    scroll: {
+                        x: scrollHost.scrollLeft,
+                        y: scrollHost.scrollTop,
+                        height: scrollHost.scrollHeight,
+                        width: scrollHost.scrollWidth
+                    },
+                    viewport: {
+                        x: 0,
+                        y: 0,
+                        height: scrollHost.clientHeight,
+                        width: scrollHost.clientWidth
+                    }
                 };
             }
             return null;
@@ -55,7 +73,7 @@ define(["require", "exports"], function (require, exports) {
         ScrollExtensions.getScrollInfo = getScrollInfo;
         function setScrollOffset(scrollHost, x, y) {
             if (scrollHost instanceof Window) {
-                scrollHost.scroll(scrollX, scrollY);
+                scrollHost.scroll(x, y);
             }
             else {
                 scrollHost.scrollTop = y;

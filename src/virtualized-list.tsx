@@ -24,7 +24,7 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
     }
     
     public componentDidMount() {
-        (this.refs[SCROLL_VIEWER_COMPONENT_REF] as VirtualizedScrollViewer).setScrollOffset(0, 1000);
+        this.getScrollViewer().setScrollOffset(0, 1000);
     }
     
     private renderItems(startIndex: number, length: number) {
@@ -39,11 +39,16 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
         return this.refs[SCROLL_VIEWER_COMPONENT_REF] as VirtualizedScrollViewer;
     }
     
+    private get shouldSuspendAnimations(): boolean {
+        let scrollViewer = this.getScrollViewer();
+        return !scrollViewer || !scrollViewer.isInitialized || scrollViewer.isScrolling;
+    }
+    
     private createScrollViewerContainer(children: React.ReactFragment): JSX.Element {
         let listAttributes: IAnimatedAttributes = {
             className: "list",
             component: "div",
-            shouldSuspendAnimations: () => this.getScrollViewer().isScrolling,
+            shouldSuspendAnimations: () => this.shouldSuspendAnimations,
             transitionName: "example"
         };
         return React.createElement(AnimatedSizeGroup, listAttributes, children);
@@ -59,6 +64,6 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
     }
     
     public setScrollOffset(offset: number): void {
-        (this.refs[SCROLL_VIEWER_COMPONENT_REF] as VirtualizedScrollViewer).setScrollOffset(0, offset);
+        this.getScrollViewer().setScrollOffset(0, offset);
     }
 }
