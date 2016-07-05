@@ -225,7 +225,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     }
     
     public render(): JSX.Element {
-        //console.log(this.state.firstVisibleItemIndex + " " + this.state.scrollOffset + " " + this.state.averageItemSize);
+        // console.log(this.state.firstVisibleItemIndex + " " + this.state.scrollOffset + " " + this.state.averageItemSize);
         return this.renderList(this.state.firstVisibleItemIndex, this.state.lastVisibleItemIndex);
     }
     
@@ -446,7 +446,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let scrollHost = scrollInfo.scrollHost;
         let scrollX = this.getDimension(0, x);
         let scrollY = this.getDimension(y, 0);
-        let updateScroll = () => { ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY) };
+        let updateScroll = () => { ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY); };
         if (this.isInitialized) {
             updateScroll();
         } else {
