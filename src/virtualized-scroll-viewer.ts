@@ -212,7 +212,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     private renderSpacer(key: string, dimension: number): JSX.Element {
         const FILL_SPACE = "100%";
         let style: React.CSSProperties = {
-            display: "inline-block"
+            display: "flex"
         };
         if (this.scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
             style.width = Math.round(dimension) + PIXEL_UNITS;
