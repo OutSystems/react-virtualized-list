@@ -5,6 +5,7 @@ import { ScrollExtensions } from "virtualized-scroll-viewer-extensions";
 const SCROLL_EVENT_NAME = "scroll";
 const RESIZE_EVENT_NAME = "resize";
 const PIXEL_UNITS = "px";
+const FLEXBOX_DISPLAY = document.createElement("p").style.flex === undefined ? "-webkit-flex" : "flex"; // support ios under 9
 
 export interface IScrollViewerProperties extends React.Props<VirtualizedScrollViewer> {
     length: number;
@@ -212,7 +213,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     private renderSpacer(key: string, dimension: number): JSX.Element {
         const FILL_SPACE = "100%";
         let style: React.CSSProperties = {
-            display: "flex"
+            display: FLEXBOX_DISPLAY,
         };
         if (this.scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
             style.width = Math.round(dimension) + PIXEL_UNITS;
