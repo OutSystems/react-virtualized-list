@@ -12,8 +12,9 @@ const TICK = 17; // same as CSS Transition group
 type TransitionCallback = (element: HTMLElement) => void;
 
 export interface IAnimatedAttributes extends React.HTMLProps<any>, React.TransitionGroupProps {
-    shouldSuspendAnimations: () => boolean;
+    shouldSuspendAnimations?: () => boolean;
     transitionName?: string;
+    onLeave?: () => void;
 }
 
 export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {
@@ -130,6 +131,12 @@ export class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
     public componentWillUnmount(): void {
         this.transitionTimeouts.forEach((t: number) => clearTimeout(t));
         this.transitionTimeouts = [];
+    }
+    
+    public componentDidLeave(): void {
+        if (this.props.onLeave) {
+            this.props.onLeave();
+        }
     }
 
     public render(): JSX.Element {
