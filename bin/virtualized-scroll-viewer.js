@@ -8,6 +8,7 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
     var SCROLL_EVENT_NAME = "scroll";
     var RESIZE_EVENT_NAME = "resize";
     var PIXEL_UNITS = "px";
+    var FLEXBOX_DISPLAY = document.createElement("p").style.flex === undefined ? "-webkit-flex" : "flex";
     var VirtualizedScrollViewer = (function (_super) {
         __extends(VirtualizedScrollViewer, _super);
         function VirtualizedScrollViewer(props, context) {
@@ -64,9 +65,18 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
             scrollHost.removeEventListener(RESIZE_EVENT_NAME, this.scrollHandler);
         };
         VirtualizedScrollViewer.prototype.componentDidMount = function () {
+            var _this = this;
             this.itemsContainer = ReactDOM.findDOMNode(this);
-            this.addScrollHandler();
-            this.scrollDirection = this.getScrollHostInfo().scrollDirection;
+            var attachScrollListener = function () {
+                _this.addScrollHandler();
+                _this.scrollDirection = _this.getScrollHostInfo().scrollDirection;
+            };
+            if (this.props.length === 0) {
+                requestAnimationFrame(function () { return setTimeout(attachScrollListener, 1); });
+            }
+            else {
+                attachScrollListener();
+            }
             this.setState(this.getCurrentScrollViewerState(this.props.length));
         };
         VirtualizedScrollViewer.prototype.componentWillUnmount = function () {
@@ -134,7 +144,7 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
         VirtualizedScrollViewer.prototype.renderSpacer = function (key, dimension) {
             var FILL_SPACE = "100%";
             var style = {
-                display: "inline-block"
+                display: FLEXBOX_DISPLAY,
             };
             if (this.scrollDirection === virtualized_scroll_viewer_extensions_1.ScrollExtensions.ScrollDirection.Horizontal) {
                 style.width = Math.round(dimension) + PIXEL_UNITS;

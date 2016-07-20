@@ -24,7 +24,8 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
         AnimatedGroup.prototype.wrapChild = function (child) {
             var childAttributes = {
                 shouldSuspendAnimations: this.props.shouldSuspendAnimations,
-                transitionName: this.props.transitionName || this.getDefaultTransitionName()
+                transitionName: this.props.transitionName || this.getDefaultTransitionName(),
+                onLeave: this.props.onLeave
             };
             return React.createElement(this.getAnimatedItem(), virtualized_scroll_viewer_extensions_1.ObjectExtensions.assign({}, child.props, childAttributes), child);
         };
@@ -92,6 +93,11 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
         AnimatedItem.prototype.componentWillUnmount = function () {
             this.transitionTimeouts.forEach(function (t) { return clearTimeout(t); });
             this.transitionTimeouts = [];
+        };
+        AnimatedItem.prototype.componentDidLeave = function () {
+            if (this.props.onLeave) {
+                this.props.onLeave();
+            }
         };
         AnimatedItem.prototype.render = function () {
             return React.Children.only(this.props.children);

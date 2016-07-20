@@ -119,8 +119,16 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     
     public componentDidMount(): void {
         this.itemsContainer = ReactDOM.findDOMNode(this) as HTMLElement;
-        this.addScrollHandler();
-        this.scrollDirection = this.getScrollHostInfo().scrollDirection; // won't be updated later if changes (case not supported now)
+        let attachScrollListener = () => {
+            this.addScrollHandler();
+            this.scrollDirection = this.getScrollHostInfo().scrollDirection; // won't be updated later if changes (case not supported now)
+        };
+        if (this.props.length === 0) {
+            // avoid forcing sync layout computation when there's no items, postpone for improved performance 
+            requestAnimationFrame(() => setTimeout(attachScrollListener, 1));
+        } else {
+            attachScrollListener();
+        }
 
         // rerender with the right amount of items in the viewport
         // we first rendered only just 2 elements, now lets render the remaining visible elements

@@ -30,7 +30,8 @@ export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {
     private wrapChild(child: any): React.ReactElement<any> {
         let childAttributes: IAnimatedAttributes = {
             shouldSuspendAnimations: this.props.shouldSuspendAnimations,
-            transitionName: this.props.transitionName || this.getDefaultTransitionName()
+            transitionName: this.props.transitionName || this.getDefaultTransitionName(),
+            onLeave: this.props.onLeave
         };
         return React.createElement(
             this.getAnimatedItem(), 
