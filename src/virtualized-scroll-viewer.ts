@@ -120,6 +120,9 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     public componentDidMount(): void {
         this.itemsContainer = ReactDOM.findDOMNode(this) as HTMLElement;
         let attachScrollListener = () => {
+            if (this.isDisposed) {
+                return;
+            }
             this.addScrollHandler();
             this.scrollDirection = this.getScrollHostInfo().scrollDirection; // won't be updated later if changes (case not supported now)
         };
@@ -136,7 +139,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     }
     
     public componentWillUnmount(): void {
-        cancelAnimationFrame(this.pendingScrollAsyncUpdateHandle);
         this.removeScrollHandler();
         this.scrollHostInfo = null;
         this.itemsContainer = null;
@@ -171,6 +173,9 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         
         // delay any updates until render time
         this.pendingScrollAsyncUpdateHandle = requestAnimationFrame(() => {
+            if (this.isDisposed) {
+                return;
+            }
             this.isScrollOngoing = true;
             let newState = this.getCurrentScrollViewerState(this.props.length);
             if (this.shallUpdateState(newState)) {
@@ -448,6 +453,10 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     
     public get isInitialized(): boolean {
         return this.isComponentInitialized;
+    }
+    
+    private get isDisposed(): boolean {
+        return !this.itemsContainer;
     }
     
     public setScrollOffset(x: number, y: number): void {
