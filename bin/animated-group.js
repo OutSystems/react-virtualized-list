@@ -25,7 +25,10 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
             var childAttributes = {
                 shouldSuspendAnimations: this.props.shouldSuspendAnimations,
                 transitionName: this.props.transitionName || this.getDefaultTransitionName(),
-                onLeave: this.props.onLeave
+                onEnter: this.props.onEnter,
+                onEnterStarted: this.props.onEnterStarted,
+                onLeave: this.props.onLeave,
+                onLeaveStarted: this.props.onLeaveStarted
             };
             return React.createElement(this.getAnimatedItem(), virtualized_scroll_viewer_extensions_1.ObjectExtensions.assign({}, child.props, childAttributes), child);
         };
@@ -81,18 +84,36 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
             this.transition(ANIMATION_ENTER, done, function (element) { return _this.startEnter(element); }, function (element) { return _this.startEnterTransition(element); }, function (element) { return _this.endEnter(element); });
         };
         AnimatedItem.prototype.startEnter = function (element) { };
-        AnimatedItem.prototype.startEnterTransition = function (element) { };
+        AnimatedItem.prototype.startEnterTransition = function (element) {
+            if (this.props.onEnterStarted) {
+                this.props.onEnterStarted();
+            }
+        };
         AnimatedItem.prototype.endEnter = function (element) { };
         AnimatedItem.prototype.componentWillLeave = function (done) {
             var _this = this;
             this.transition(ANIMATION_LEAVE, done, function (element) { return _this.startLeave(element); }, function (element) { return _this.startLeaveTransition(element); }, function (element) { return _this.endLeave(element); });
         };
         AnimatedItem.prototype.startLeave = function (element) { };
-        AnimatedItem.prototype.startLeaveTransition = function (element) { };
+        AnimatedItem.prototype.startLeaveTransition = function (element) {
+            if (this.props.onLeaveStarted) {
+                this.props.onLeaveStarted();
+            }
+        };
         AnimatedItem.prototype.endLeave = function (element) { };
         AnimatedItem.prototype.componentWillUnmount = function () {
             this.transitionTimeouts.forEach(function (t) { return clearTimeout(t); });
             this.transitionTimeouts = [];
+        };
+        AnimatedItem.prototype.componentDidAppear = function () {
+            if (this.props.onEnter) {
+                this.props.onEnter();
+            }
+        };
+        AnimatedItem.prototype.componentDidEnter = function () {
+            if (this.props.onEnter) {
+                this.props.onEnter();
+            }
         };
         AnimatedItem.prototype.componentDidLeave = function () {
             if (this.props.onLeave) {

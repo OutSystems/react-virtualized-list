@@ -14,7 +14,10 @@ type TransitionCallback = (element: HTMLElement) => void;
 export interface IAnimatedAttributes extends React.HTMLProps<any>, React.TransitionGroupProps {
     shouldSuspendAnimations?: () => boolean;
     transitionName?: string;
+    onEnter?: () => void;
+    onEnterStarted?: () => void;
     onLeave?: () => void;
+    onLeaveStarted?: () => void;
 }
 
 export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {
@@ -31,7 +34,10 @@ export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {
         let childAttributes: IAnimatedAttributes = {
             shouldSuspendAnimations: this.props.shouldSuspendAnimations,
             transitionName: this.props.transitionName || this.getDefaultTransitionName(),
-            onLeave: this.props.onLeave
+            onEnter: this.props.onEnter,
+            onEnterStarted: this.props.onEnterStarted,
+            onLeave: this.props.onLeave,
+            onLeaveStarted: this.props.onLeaveStarted
         };
         return React.createElement(
             this.getAnimatedItem(), 
@@ -111,7 +117,11 @@ export class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
     
     protected startEnter(element: HTMLElement): void { }
     
-    protected startEnterTransition(element: HTMLElement): void { }
+    protected startEnterTransition(element: HTMLElement): void {
+        if (this.props.onEnterStarted) {
+            this.props.onEnterStarted();
+        }
+    }
     
     protected endEnter(element: HTMLElement): void { }
 
@@ -125,13 +135,29 @@ export class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
     
     protected startLeave(element: HTMLElement): void { }
     
-    protected startLeaveTransition(element: HTMLElement): void { }
+    protected startLeaveTransition(element: HTMLElement): void {
+        if (this.props.onLeaveStarted) {
+            this.props.onLeaveStarted();
+        }
+    }
     
     protected endLeave(element: HTMLElement): void { }
 
     public componentWillUnmount(): void {
         this.transitionTimeouts.forEach((t: number) => clearTimeout(t));
         this.transitionTimeouts = [];
+    }
+    
+    public componentDidAppear(): void {
+        if (this.props.onEnter) {
+            this.props.onEnter();
+        }
+    }
+    
+    public componentDidEnter(): void {
+        if (this.props.onEnter) {
+            this.props.onEnter();
+        }
     }
     
     public componentDidLeave(): void {

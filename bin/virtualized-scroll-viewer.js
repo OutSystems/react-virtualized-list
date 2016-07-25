@@ -68,6 +68,9 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
             var _this = this;
             this.itemsContainer = ReactDOM.findDOMNode(this);
             var attachScrollListener = function () {
+                if (_this.isDisposed) {
+                    return;
+                }
                 _this.addScrollHandler();
                 _this.scrollDirection = _this.getScrollHostInfo().scrollDirection;
             };
@@ -80,7 +83,6 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
             this.setState(this.getCurrentScrollViewerState(this.props.length));
         };
         VirtualizedScrollViewer.prototype.componentWillUnmount = function () {
-            cancelAnimationFrame(this.pendingScrollAsyncUpdateHandle);
             this.removeScrollHandler();
             this.scrollHostInfo = null;
             this.itemsContainer = null;
@@ -107,6 +109,9 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
                 return;
             }
             this.pendingScrollAsyncUpdateHandle = requestAnimationFrame(function () {
+                if (_this.isDisposed) {
+                    return;
+                }
                 _this.isScrollOngoing = true;
                 var newState = _this.getCurrentScrollViewerState(_this.props.length);
                 if (_this.shallUpdateState(newState)) {
@@ -311,6 +316,13 @@ define(["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-e
         Object.defineProperty(VirtualizedScrollViewer.prototype, "isInitialized", {
             get: function () {
                 return this.isComponentInitialized;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(VirtualizedScrollViewer.prototype, "isDisposed", {
+            get: function () {
+                return !this.itemsContainer;
             },
             enumerable: true,
             configurable: true

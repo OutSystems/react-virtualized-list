@@ -42,11 +42,13 @@ define(["require", "exports", "animated-group"], function (require, exports, ani
             element.style.height = this.previousStyleHeight;
         };
         AnimatedSizeItem.prototype.startEnter = function (element) {
+            _super.prototype.startEnter.call(this, element);
             var elementBounds = element.getBoundingClientRect();
             this.previousWidth = elementBounds.width;
             this.previousHeight = elementBounds.height;
         };
         AnimatedSizeItem.prototype.startEnterTransition = function (element) {
+            _super.prototype.startEnterTransition.call(this, element);
             this.storeStyleSize(element);
             var elementBounds = element.getBoundingClientRect();
             if (elementBounds.width !== this.previousWidth) {
@@ -57,15 +59,18 @@ define(["require", "exports", "animated-group"], function (require, exports, ani
             }
         };
         AnimatedSizeItem.prototype.endEnter = function (element) {
+            _super.prototype.endEnter.call(this, element);
             this.restorePreviousStyleSize(element);
         };
         AnimatedSizeItem.prototype.startLeave = function (element) {
+            _super.prototype.startLeave.call(this, element);
             this.storeStyleSize(element);
             var elementBounds = element.getBoundingClientRect();
             element.style.width = elementBounds.width + PIXELS_UNIT;
             element.style.height = elementBounds.height + PIXELS_UNIT;
         };
         AnimatedSizeItem.prototype.startLeaveTransition = function (element) {
+            _super.prototype.startLeaveTransition.call(this, element);
             this.restorePreviousStyleSize(element);
         };
         return AnimatedSizeItem;

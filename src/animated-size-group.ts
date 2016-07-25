@@ -42,6 +42,7 @@ export class AnimatedSizeItem extends AnimatedItem {
     }
     
     protected startEnter(element: HTMLElement): void {
+        super.startEnter(element);
         // store current size
         let elementBounds = element.getBoundingClientRect();
         this.previousWidth = elementBounds.width;
@@ -49,6 +50,7 @@ export class AnimatedSizeItem extends AnimatedItem {
     }
     
     protected startEnterTransition(element: HTMLElement): void {
+        super.startEnterTransition(element);
         // store inline style size to allow restoring it after animation ends
         this.storeStyleSize(element);
         
@@ -66,11 +68,13 @@ export class AnimatedSizeItem extends AnimatedItem {
     }
     
     protected endEnter(element: HTMLElement): void {
+        super.endEnter(element);
         // revert the changes applied prior to animation
         this.restorePreviousStyleSize(element);
     }
     
     protected startLeave(element: HTMLElement): void {
+        super.startLeave(element);
         // store inline style size to allow restoring it after animation ends
         this.storeStyleSize(element);
         
@@ -81,6 +85,7 @@ export class AnimatedSizeItem extends AnimatedItem {
     }
     
     protected startLeaveTransition(element: HTMLElement): void {
+        super.startLeaveTransition(element);
         // revert the changes applied prior to animation
         this.restorePreviousStyleSize(element);
     }
