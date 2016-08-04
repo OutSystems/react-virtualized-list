@@ -1,19 +1,22 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { VirtualizedList } from "virtualized-list";
+import { Images } from "images";
 
-class App extends React.Component<{}, { items: number }> {
+class App extends React.Component<{}, { items: number, pageBufferSize: number }> {
     
     constructor() {
         super();
         this.state = {
-            items: 100
+            items: 100,
+            pageBufferSize: 4
         };
     }
     
     refresh() {
         this.setState({ 
-            items: parseInt((this.refs["itemsCount"] as HTMLInputElement).value)
+            items: parseInt((this.refs["itemsCount"] as HTMLInputElement).value),
+            pageBufferSize: parseInt((this.refs["pageBufferSize"] as HTMLInputElement).value)
         });
     }
     
@@ -23,9 +26,10 @@ class App extends React.Component<{}, { items: number }> {
     }
     
     render() {
-        let list: number[] = [];
+        let imagesCount = Images.length;
+        let list: { index: number, image: string }[] = [];
         for (let i = 0; i < this.state.items; i++) {
-            list.push(i);
+            list.push({ image: Images[i % imagesCount], index: i });
         }
         return (
             <div>
@@ -35,11 +39,15 @@ class App extends React.Component<{}, { items: number }> {
                 <button onClick={this.refresh.bind(this)}>Set Items</button>
                 <br/>
                 <br/>
+                <input ref="pageBufferSize" placeholder="Number extra invisible of items rendered" defaultValue={this.state.pageBufferSize + ""} />
+                <button onClick={this.refresh.bind(this)}>Set Buffer Size</button>
+                <br/>
+                <br/>
                 <input ref="scrollOffset" placeholder="Scroll offset" defaultValue={this.state.items + ""} />
                 <button onClick={this.setScroll.bind(this)}>Set Scroll</button>
                 <br/>
                 <br/>
-                <VirtualizedList ref="list" list={list}/>
+                <VirtualizedList ref="list" list={list} pageBufferSize={this.state.pageBufferSize}/>
             </div>);
     }
 }

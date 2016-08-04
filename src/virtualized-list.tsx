@@ -6,7 +6,8 @@ import { AnimatedSizeGroup } from "animated-size-group";
 const SCROLL_VIEWER_COMPONENT_REF = "scrollViewer";
 
 export interface IVirtualizedListProperties {
-    list: number[]
+    list: { image: string, index: number }[],
+    pageBufferSize: number
 }
 
 export class VirtualizedList extends React.Component<IVirtualizedListProperties, {}> {
@@ -16,10 +17,11 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
     private renderItem(index: number) {
         let even = index % 2 === 0;
         let className = "list-item " + (even ? "even" : "odd");
+        let item = this.props.list[index];
         return (
             <div key={"i-" + index} className={className}>
-                Item {this.props.list[index]}
-                <div className="spacer"/>
+                Item {item.index}
+                <img src={item.image}></img>
             </div>);
     }
     
@@ -59,11 +61,12 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
             <VirtualizedScrollViewer renderItems={(start, length) => this.renderItems(start, length)} 
                                      renderWrapper={(children) => this.createScrollViewerContainer(children)}
                                      length={this.props.list.length}
+                                     pageBufferSize={this.props.pageBufferSize}
                                      ref={SCROLL_VIEWER_COMPONENT_REF} />
         );
     }
     
     public setScrollOffset(offset: number): void {
-        this.getScrollViewer().setScrollOffset(0, offset);
+        this.getScrollViewer().setScrollOffset(undefined, offset);
     }
 }

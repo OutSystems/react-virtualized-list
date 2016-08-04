@@ -11,7 +11,8 @@ export interface IScrollViewerProperties extends React.Props<VirtualizedScrollVi
     length: number;
     renderItems: (startIndex: number, length: number) => React.ReactFragment;
     scrollChanged?: () => void;
-    renderWrapper: (children: React.ReactFragment) => JSX.Element; 
+    renderWrapper: (children: React.ReactFragment) => JSX.Element;
+    pageBufferSize?: number; // number of pages buffered  
 }
 
 interface IScrollInfo {
@@ -29,6 +30,7 @@ export interface IScrollViewerState {
     scrollOffset: number; // scroll compensation for missing items
     effectiveScrollValue: number; // scroll value of the scroll host
     itemsEnteringCount: number; // stores the number entering viewport in the last render frame
+    hasAccumulatedError?: boolean; 
 }
 
 type Rect = {
@@ -145,6 +147,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     }
     
     public componentWillReceiveProps(nextProps: IScrollViewerProperties): void {
+        // TODO remove hasPendingPropertiesUpdate and use setState callback
         this.setState(this.getCurrentScrollViewerState(nextProps.length)); // rerender with the right amount of items in the viewport
         this.hasPendingPropertiesUpdate = true;
     }
@@ -166,35 +169,56 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         }
     }
     
-    private handleScroll(): void {
+    private handleScroll(scrollEvent: UIEvent): void {
         if (this.pendingScrollAsyncUpdateHandle) {
             return; // an update already queued, skip
         }
-        
+            
         // delay any updates until render time
         this.pendingScrollAsyncUpdateHandle = requestAnimationFrame(() => {
             if (this.isDisposed) {
                 return;
             }
-            this.isScrollOngoing = true;
-            let newState = this.getCurrentScrollViewerState(this.props.length);
-            if (this.shallUpdateState(newState)) {
-                // only update when visible items change -> smooth scroll
-                this.setState(newState, () => this.isScrollOngoing = false);
-            } else {
-                this.isScrollOngoing = false;
+            
+            try {
+                let newState = this.getCurrentScrollViewerState(this.props.length);
+                
+                if (newState.hasAccumulatedError) {
+                    // we reach an error situation, need to correct scrollbars position
+                    scrollEvent.preventDefault();
+                    let scrollHost = this.getScrollHostInfo().scrollHost;
+                    if (this.itemsContainer === scrollHost) {
+                        // items container does not own scrollbars 
+                        ScrollExtensions.setScrollOffset(scrollHost, 0, 0);
+                    } else {
+                        // items container does not own scrollbars
+                        this.itemsContainer.scrollIntoView(true);    
+                    }
+                    
+                    return;
+                }
+                
+                this.isScrollOngoing = true;
+                this.setState(newState, () => this.isScrollOngoing = false);    
+            } finally {
+                this.pendingScrollAsyncUpdateHandle = 0;    
             }
             
-            this.pendingScrollAsyncUpdateHandle = 0;
             if (this.props.scrollChanged) {
                 this.props.scrollChanged();
             }
         });
     }
     
-    private shallUpdateState(state: IScrollViewerState): boolean {
-        return state.firstVisibleItemIndex !== this.state.firstVisibleItemIndex ||
-               state.lastVisibleItemIndex !== this.state.lastVisibleItemIndex;
+    public shouldComponentUpdate(nextProps: IScrollViewerProperties, nextState: IScrollViewerState): boolean {
+        // only render when visible items change -> smooth scroll
+        //console.trace(nextState);
+        return true;
+        
+        /*return nextState.firstVisibleItemIndex !== this.state.firstVisibleItemIndex ||
+               nextState.lastVisibleItemIndex !== this.state.lastVisibleItemIndex ||
+               nextState.scrollOffset !== this.state.scrollOffset ||
+               nextState.hasAccumulatedError !== this.state.hasAccumulatedError;*/
     }
     
     private renderList(firstItemVisibleIndex: number, lastVisibleItemIndex: number): JSX.Element {
@@ -354,7 +378,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             averageItemSize = (0.8 * this.state.averageItemSize) + (0.2 * averageItemSize);
         }
         
-        let viewportSafetyMargin = scrollInfo.viewportSize * 0.5; // extra safety space for some more items
+        let viewportSafetyMargin = scrollInfo.viewportSize * ((this.props.pageBufferSize || 1) / 2); // extra safety space for some more items
         
         // number of extra items to render before/after viewport bounds that
         // helps avoiding showing blank space specially when scrolling fast
@@ -368,6 +392,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMargin;
         let itemsEnteringViewportCount = 0;
         let largeScrollChange = false;
+        let hasAccumulatedError = false;
         
         if (this.state.itemsEnteringCount === 0) {
             if (scrollInfo.scrollOffset > this.state.effectiveScrollValue) {
@@ -405,7 +430,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 let firstItemBounds = this.getItemBounds(items[0]);
                 // calculate the distance from first item to the viewport lower margin
                 let firstItemOffset = this.getDimension(firstItemBounds.top - viewportLowerMargin, firstItemBounds.left - viewportLowerMargin);
-                
+                                    
                 if (firstItemOffset > 0) {
                     // calculate the number of items entering (must be at most the number of items before first)
                     itemsEnteringViewportCount = Math.min(firstVisibleItemIndex, Math.ceil(firstItemOffset / averageItemSize));
@@ -414,6 +439,14 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                         // number of items entering does not fit in the viewport - big scroll change
                         itemsEnteringViewportCount = 0;
                         largeScrollChange = true;
+                    }
+                } else {
+                    let lastItemBounds = this.getItemBounds(items[items.length - 1]);
+                    // calculate the distance from first item to the viewport lower margin
+                    let lastItemOffset = this.getDimension(lastItemBounds.bottom - viewportLowerMargin, lastItemBounds.right - viewportLowerMargin);
+                    if (lastItemOffset < 0) {
+                        // somehow the accumulated error is to big, apply some corrections to avoid displaying blank space
+                        hasAccumulatedError = true;
                     }
                 }
             }
@@ -432,7 +465,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         if (firstVisibleItemIndex === 0 || scrollInfo.scrollOffset < averageItemSize) {
             // reached the beginning of the list
             scrollOffset = 0;
-            firstVisibleItemIndex = 0;    
+            firstVisibleItemIndex = 0;
         }
         
         let lastVisibleItemIndex = Math.min(listLength - 1, firstVisibleItemIndex + numberOfVisibleItems);
@@ -443,7 +476,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             averageItemSize: averageItemSize,
             scrollOffset: scrollOffset,
             effectiveScrollValue: scrollInfo.scrollOffset,
-            itemsEnteringCount: itemsEnteringViewportCount
+            itemsEnteringCount: itemsEnteringViewportCount,
+            hasAccumulatedError: hasAccumulatedError
         };
     }
     
@@ -462,8 +496,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     public setScrollOffset(x: number, y: number): void {
         let scrollInfo = this.getScrollInfo();
         let scrollHost = scrollInfo.scrollHost;
-        let scrollX = this.getDimension(0, x);
-        let scrollY = this.getDimension(y, 0);
+        let scrollX = this.getDimension(undefined, x);
+        let scrollY = this.getDimension(y, undefined);
         let updateScroll = () => { ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY); };
         if (this.isInitialized) {
             updateScroll();

@@ -1,28 +1,41 @@
 <html>
 <head>
+    <meta name="format-detection" content="telephone=no">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no, minimum-scale=1.0">
     <script data-main="bin/index" src="bin/require.js"></script>
     <style>
+        body {
+            font-family: "Arial";    
+        }
+        
         .list {
             /*height: 300px;
             overflow-y: scroll;*/
             border: 1px solid gray;
+            line-height: 100px;
         }
         
         .list-item {
             border-bottom: 1px solid lightsteelblue;
-            background: rgb(230, 230, 230)
+            background: rgb(230, 230, 230);
+            padding: 10px;
         }
         
         .list-item.odd {
-           background: rgb(200, 200, 200)
+           background: rgb(150, 150, 150)
         }
         
         .list-item .spacer {
-            height: 40px;
+            height: 600px;
         }
          
         .list-item.odd .spacer {
-            height: 70px;
+            height: 300px;
+        }
+        
+        .list-item img {
+            max-width: 100%;
+            display: block;
         }
         
         .list-item.example-appear,

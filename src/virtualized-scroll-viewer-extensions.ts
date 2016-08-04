@@ -57,8 +57,8 @@ export module ScrollExtensions {
             return {
                 scrollHost: scrollHost,
                 scroll: { 
-                    x: scrollHost.scrollX, 
-                    y: scrollHost.scrollY, 
+                    x: document.body.scrollLeft, 
+                    y: document.body.scrollTop,
                     height: document.body.scrollHeight, 
                     width: document.body.scrollWidth 
                 },
@@ -90,12 +90,21 @@ export module ScrollExtensions {
         return null;
     }
     
-    export function setScrollOffset(scrollHost: Element | Window, x: number, y: number): void {
+    export function setScrollOffset(scrollHost: Element | Window, x?: number, y?: number): void {
         if (scrollHost instanceof Window) {
-            scrollHost.scroll(x, y);
+            if (!isNaN(y)) {
+                scrollHost.scrollY = y;
+            }
+            if (!isNaN(x)) {
+                scrollHost.scrollX = x;
+            }
         } else {
-            scrollHost.scrollTop = y;
-            scrollHost.scrollLeft = x;
+            if (!isNaN(y)) {
+                scrollHost.scrollTop = y;
+            }
+            if (!isNaN(x)) {
+                scrollHost.scrollLeft = x;
+            }
         }
     }
 }
