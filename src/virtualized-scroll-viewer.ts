@@ -2,11 +2,17 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { ScrollExtensions, ObjectExtensions } from "virtualized-scroll-viewer-extensions";
 
+function insideiOSWebView(): boolean {
+    return !(<any> navigator).standalone && /(iPad)|(iPhone)/i.test(navigator.userAgent) && !/safari/i.test(navigator.userAgent);    
+}
+
 const SCROLL_EVENT_NAME = "scroll";
 const RESIZE_EVENT_NAME = "resize";
 const PIXEL_UNITS = "px";
 const FLEXBOX_DISPLAY = document.createElement("p").style.flex === undefined ? "-webkit-flex" : "flex"; // support ios under 9
 const SENTINEL_POLLING_DURATION = 500; // time in ms to watch sentinel element position to compensate any scroll jumps
+const DEFAULT_BUFFER_SIZE = 3; // default number of extra viewports to render
+const BUFFER_MULTIPLIER = insideiOSWebView() ? 4 : 1; // inside iOS webview use 4x the buffer size (due to scrolling limitations) 
 
 export interface IScrollViewerProperties extends React.Props<VirtualizedScrollViewer> {
     length: number;
@@ -82,8 +88,9 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Scroll information: the element that has the scrollbar, its viewport size and the scroll position
      */
     private getScrollInfo(): IScrollInfo {
-        let scrollInfo = ScrollExtensions.getScrollInfo(this.getScrollHostInfo());
-        let scrollHost = scrollInfo.scrollHost;
+        let scrollHostInfo = this.getScrollHostInfo();
+        let scrollHost = scrollHostInfo.scrollHost;
+        let scrollInfo = ScrollExtensions.getScrollInfo(scrollHost);
         let result = {
             scrollHost: scrollHost,
             scrollOffset: this.getDimension(scrollInfo.scroll.y, scrollInfo.scroll.x),
@@ -423,7 +430,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             averageItemSize = (0.8 * this.state.averageItemSize) + (0.2 * averageItemSize);
         }
         
-        let viewportSafetyMargin = scrollInfo.viewportSize * ((this.props.pageBufferSize || 1) / 2); // extra safety space for some more items
+        let pageBufferSize = (this.props.pageBufferSize || DEFAULT_BUFFER_SIZE) * BUFFER_MULTIPLIER;
+        let viewportSafetyMargin = scrollInfo.viewportSize * (pageBufferSize / 2); // extra safety space for some more items
         
         // number of extra items to render before/after viewport bounds that
         // helps avoiding showing blank space specially when scrolling fast
@@ -444,7 +452,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 
                 let firstItemIndexInViewport = -1;
                 let sizeOfItemsLeavingOnNextRender = 0;
-                let viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMargin;
                 let firstItemBounds = this.getItemBounds(items[0]);
                 let firstItemLowerBound = this.getDimension(firstItemBounds.top, firstItemBounds.left);
                 

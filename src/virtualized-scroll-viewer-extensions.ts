@@ -50,9 +50,7 @@ export module ScrollExtensions {
         return getScrollHostInfo(element.parentElement, excludeStaticParent);
     }
     
-    export function getScrollInfo(scrollHostInfo: IScrollHostInfo): IScrollInfo {
-        let scrollHost = scrollHostInfo.scrollHost;
-        
+    export function getScrollInfo(scrollHost: Element | Window): IScrollInfo {
         if (scrollHost instanceof Window) {
             return {
                 scrollHost: scrollHost,
@@ -90,21 +88,23 @@ export module ScrollExtensions {
         return null;
     }
     
-    export function setScrollOffset(scrollHost: Element | Window, x?: number, y?: number): void {
+    export function setScrollOffset(scrollHost: Element | Window, x?: number, y?: number, increment: boolean = false): void {
         if (scrollHost instanceof Window) {
-            if (!isNaN(y)) {
-                scrollHost.scrollY = y;
+            scrollHost = document.body;
+        }
+        
+        let scrollHostElement = <Element> scrollHost;
+        if (!isNaN(y)) {
+            if (increment) {
+                y += scrollHostElement.scrollTop;
             }
-            if (!isNaN(x)) {
-                scrollHost.scrollX = x;
+            scrollHostElement.scrollTop = y;
+        }
+        if (!isNaN(x)) {
+            if (increment) {
+                x += scrollHostElement.scrollLeft;
             }
-        } else {
-            if (!isNaN(y)) {
-                scrollHost.scrollTop = y;
-            }
-            if (!isNaN(x)) {
-                scrollHost.scrollLeft = x;
-            }
+            scrollHostElement.scrollLeft = x;
         }
     }
 }
