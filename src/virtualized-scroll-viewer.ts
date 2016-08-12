@@ -36,7 +36,8 @@ export interface IScrollViewerState {
     averageItemSize: number;
     scrollOffset: number; // scroll compensation for missing items
     effectiveScrollOffset: number; // scroll value of the scroll host
-    itemsEnteringCount: number; // stores the number entering viewport in the last render frame 
+    itemsEnteringCount: number; // stores the number entering viewport in the last render frame
+    offScreenItemsCount: number; 
 }
 
 type Rect = {
@@ -69,7 +70,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             averageItemSize: 0,
             scrollOffset: 0,
             effectiveScrollOffset: 0,
-            itemsEnteringCount: 0
+            itemsEnteringCount: 0,
+            offScreenItemsCount: 0
         };
     }
     
@@ -158,11 +160,24 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         this.hasPendingPropertiesUpdate = true;
     }
     
-    public componentDidUpdate(): void {
+    public setState(state: IScrollViewerState | ((prevState: IScrollViewerState, props: IScrollViewerProperties) => IScrollViewerState), callback?: () => any): void {
+        // using set state callback instead of componentDidUpdate because when using transition group
+        // removed nodes will still be present when component did update is called
+        super.setState(<any> state, () => {
+            this.onDidUpdate();
+            if (callback) {
+                callback();
+            }
+        });
+    }
+    
+    private onDidUpdate(): void {
         this.isComponentInitialized = true; // we render twice before initialization complete
         this.itemsContainer = ReactDOM.findDOMNode(this) as HTMLElement;
         
         //console.log(this.state);
+        
+        this.renderOffScreen();
         
         if (this.setPendingScroll) {
             this.setPendingScroll();
@@ -175,6 +190,25 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             this.setState(this.getCurrentScrollViewerState(this.props.length));
             this.hasPendingPropertiesUpdate = false;
         }
+    }
+    
+    private renderOffScreen() {
+        this.itemsContainer.style.position = "relative";
+        let items = this.getListItems(this.itemsContainer);
+        for (let item of items.slice(0, this.state.offScreenItemsCount)) {
+            let child = <HTMLElement> item;
+            if (child.style !== undefined) {
+                child.style.position = "absolute";
+                child.style.top = "-10000px";
+            }
+        }
+        /*for (let item of items.slice(this.state.offScreenItemsCount)) {
+            let child = <HTMLElement> item;
+            if (child.style !== undefined) {
+                child.style.position = "";
+                child.style.top = "";
+            }
+        }*/
     }
     
     private pollingScrollChangesHandle = 0;
@@ -222,7 +256,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 this.pollingScrollChangesHandle = requestAnimationFrame(execute);
             }
         };
-        execute();
+        //execute();
     }
     
     private handleScroll(scrollEvent: UIEvent): void {
@@ -371,8 +405,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             return false;
         }
 
-        let firstElement = items[0];
-        let secondElement = items[1];
+        let firstElement = items[items.length - 2];
+        let secondElement = items[items.length - 1];
         
         // get elements original dimensions (do not use the getDimension function here)
         let firstElementBounds = firstElement.getBoundingClientRect();
@@ -404,6 +438,28 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     }
     
     /**
+     * Count the number of items needed to fit in the specified size and retrieve the
+     * summing size of those items (may overflow)
+     */
+    private countItemsAndSizeThatFitIn(items: Element[], sizeToFit: number): { size: number, count: number } {
+        let itemsCount = 0;
+        let itemsSize = 0;
+        for (let i = 0; i < items.length; i++) {
+            let itemBounds = this.getItemBounds(items[i]); // consider a minimum size for each item
+            let itemSize = this.getDimension(itemBounds.height, itemBounds.width);
+            
+            itemsCount++;
+            itemsSize += itemSize;
+                            
+            if (itemsSize > sizeToFit) {
+                break;
+            }
+        }
+        
+        return { size: itemsSize, count: itemsCount };
+    }
+    
+    /**
      * Calculate first and last visible items for the current scroll state, as well as the scroll offset
      */
     private getCurrentScrollViewerState(listLength: number): IScrollViewerState {
@@ -417,7 +473,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 averageItemSize: 0,
                 scrollOffset: 0,
                 effectiveScrollOffset: 0,
-                itemsEnteringCount: 0
+                itemsEnteringCount: 0,
+                offScreenItemsCount: 0
             };
         }
         
@@ -444,53 +501,78 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let firstVisibleItemIndex = this.state.firstVisibleItemIndex;
         let viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMargin;
         let itemsEnteringViewportCount = 0;
+        let offScreenItemsCount = this.state.offScreenItemsCount;
         let largeScrollChange = false;
         
         if (this.state.itemsEnteringCount === 0) {
+            
+            // get first spacer bounds instead of picking first item due to items rendered offscreen which may have wrong coordinates
+            let firstSpacerBounds = this.itemsContainer.children[0].getBoundingClientRect();
+            let startOffset = this.getDimension(firstSpacerBounds.bottom, firstSpacerBounds.right);
+                
             if (scrollInfo.scrollOffset > this.state.effectiveScrollOffset) {
                 // scrolling down/right
                 
-                let firstItemIndexInViewport = -1;
-                let sizeOfItemsLeavingOnNextRender = 0;
-                let firstItemBounds = this.getItemBounds(items[0]);
-                let firstItemLowerBound = this.getDimension(firstItemBounds.top, firstItemBounds.left);
-                
-                // find the first element that intersects the viewport
-                // and calculate the size of the items that will leave viewport
-                for (let i = 0; i < items.length; i++) {
-                    let itemBounds = this.getItemBounds(items[i]); // consider a minimum size for each item
-                    let itemSize = this.getDimension(itemBounds.height, itemBounds.width);
-                     
-                    if ((firstItemLowerBound + sizeOfItemsLeavingOnNextRender + itemSize) > viewportLowerMargin) {
-                        firstItemIndexInViewport = i;
-                        break;
-                    }
+                if (startOffset < viewportLowerMargin) {
                     
-                    sizeOfItemsLeavingOnNextRender += itemSize;
-                }
-                 
-                if (firstItemIndexInViewport > 0) {
-                    firstVisibleItemIndex += firstItemIndexInViewport;
-                    scrollOffset += sizeOfItemsLeavingOnNextRender; // compensate scroll with the size of the items leaving
-                } else if (firstItemIndexInViewport === -1) {
-                    // scroll changes are too big that no elements intersect viewport
-                    largeScrollChange = true;
-                }
-            } else if (scrollInfo.scrollOffset < this.state.effectiveScrollOffset) {
-                // scrolling up/left
-                let firstItemBounds = this.getItemBounds(items[0]);
-                // calculate the distance from first item to the viewport lower margin
-                let firstItemOffset = this.getDimension(firstItemBounds.top - viewportLowerMargin, firstItemBounds.left - viewportLowerMargin);
-                                    
-                if (firstItemOffset > 0) {
-                    // calculate the number of items entering based on average size (must be at most the number of items before first)
-                    itemsEnteringViewportCount = Math.min(firstVisibleItemIndex, Math.ceil(firstItemOffset / averageItemSize));
-                    firstVisibleItemIndex = firstVisibleItemIndex - itemsEnteringViewportCount;
-                    if (itemsEnteringViewportCount > numberOfVisibleItems) {
-                        // number of items entering does not fit in the viewport - big scroll change
-                        itemsEnteringViewportCount = 0;
+                    /*let offScreenSpaceSize = offscreenLowerMargin - viewportLowerMargin;
+                    let itemsGoingToOffScreenBufferOnNextRender = this.countItemsAndSizeThatFitIn(items, offScreenSpaceSize);
+                    scrollOffset += itemsGoingToOffScreenBufferOnNextRender.size; // compensate scroll with the size of the items going to off-screen
+                    offScreenItemsCount = itemsGoingToOffScreenBufferOnNextRender.count;*/
+                    
+                    let discardingSpaceSize = viewportLowerMargin - startOffset;
+                    
+                    // find the items that will be leaving in the next render 
+                    let itemsLeavingOnNextRender = this.countItemsAndSizeThatFitIn(items, discardingSpaceSize);
+                    if (itemsLeavingOnNextRender.size >= discardingSpaceSize) {
+                        firstVisibleItemIndex += itemsLeavingOnNextRender.count;
+                        scrollOffset += itemsLeavingOnNextRender.size; // compensate scroll with the size of the items leaving
+                    } else {
+                        // scroll changes are too big that no elements intersect viewport
                         largeScrollChange = true;
                     }
+                }
+                
+            } else if (scrollInfo.scrollOffset < this.state.effectiveScrollOffset) {
+                // scrolling up/left
+                
+                if (startOffset > viewportLowerMargin) {
+                    let availableSpaceSize = startOffset - viewportLowerMargin;
+                    if (offScreenItemsCount > 0) {
+                        let offScreenItems = items.slice(0, offScreenItemsCount);
+                        // find the items that will be entering in the next render coming from the offscreen buffer 
+                        let itemsEnteringFromOffScreenOnNextRender = this.countItemsAndSizeThatFitIn(offScreenItems, availableSpaceSize);
+                        
+                        offScreenItemsCount -= itemsEnteringFromOffScreenOnNextRender.count;
+                        scrollOffset -= itemsEnteringFromOffScreenOnNextRender.size;
+                        availableSpaceSize -= itemsEnteringFromOffScreenOnNextRender.size;
+                    }
+                        
+                    if (availableSpaceSize > 0) {
+                        // there's still space left to fill
+                        firstVisibleItemIndex = Math.min(firstVisibleItemIndex, Math.ceil(availableSpaceSize / averageItemSize));
+                        //scrollOffset -= averageItemSize;
+                    }
+                    
+                    
+                    /*for (let i = 0; i < this.state.offScreenItemsCount; i++) {
+                        let itemBounds = this.getItemBounds(items[i]); // consider a minimum size for each item
+                        let itemSize = this.getDimension(itemBounds.height, itemBounds.width);
+                        
+                        if ((firstItemOffset + sizeOfItemsLeavingOnNextRender + itemSize) > viewportLowerMargin) {
+                            firstItemIndexInViewport = i;
+                            break;
+                        }
+                    }*/
+                    // calculate the number of items entering based on average size (must be at most the number of items before first)
+                    // itemsEnteringViewportCount = Math.min(firstVisibleItemIndex, Math.ceil((firstItemOffset - viewportLowerMargin) / averageItemSize));
+                    /*offScreenItemsCount = Math.min(firstVisibleItemIndex, Math.ceil((firstItemOffset - viewportLowerMargin) / averageItemSize));
+                    firstVisibleItemIndex = firstVisibleItemIndex - offScreenItemsCount;
+                    if (offScreenItemsCount > numberOfVisibleItems) {
+                        // number of items entering does not fit in the viewport - big scroll change
+                        offScreenItemsCount = 0;
+                        largeScrollChange = true;
+                    }*/
                 }
             }
             
@@ -498,7 +580,32 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 // calculate first item in viewport based on the average item size (and some margin)
                 firstVisibleItemIndex = Math.max(0, Math.floor((scrollInfo.scrollOffset - viewportSafetyMargin) / averageItemSize));
                 scrollOffset = Math.round(firstVisibleItemIndex * averageItemSize);
+                offScreenItemsCount = 0;
             }
+            
+            if (this.state.firstVisibleItemIndex !== firstVisibleItemIndex) {
+                let offScreenSize = viewportSafetyMargin / 2;
+                if (firstVisibleItemIndex > this.state.firstVisibleItemIndex) {
+                    // some items will be discarded
+                    let itemsToRemoveCount = firstVisibleItemIndex - this.state.firstVisibleItemIndex; 
+                    let remainingItems = items.slice(itemsToRemoveCount);
+                    let offScreenItems = this.countItemsAndSizeThatFitIn(remainingItems, offScreenSize); // put items in half of viewport safety margin offscreen
+                    
+                    let offScreenItemsSize = this.calculateItemsSize(items, 0, this.state.offScreenItemsCount - 1); // TODO JMN store in state
+                    
+                    offScreenItemsCount = offScreenItems.count;
+                    scrollOffset = scrollOffset - offScreenItemsSize + offScreenItems.size;
+                } else {
+                    offScreenItemsCount = Math.ceil(averageItemSize / offScreenSize);
+                    scrollOffset += offScreenItemsCount * averageItemSize;
+                }
+            }
+            
+            //if (this.state.firstVisibleItemIndex !== firstVisibleItemIndex) {
+                // calculate the number of items that go in off-screen buffer
+            
+            //offScreenItemsCount = Math.ceil((viewportSafetyMargin / 2) / averageItemSize);
+            //}
         } else {
             let lastItemEnteringViewport = Math.min(items.length - 1, this.state.itemsEnteringCount - 1);
             let sizeOfItemsEnteringViewport = this.calculateItemsSize(items, 0, lastItemEnteringViewport);
@@ -519,7 +626,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             averageItemSize: averageItemSize,
             scrollOffset: scrollOffset,
             effectiveScrollOffset: scrollInfo.scrollOffset,
-            itemsEnteringCount: itemsEnteringViewportCount
+            itemsEnteringCount: itemsEnteringViewportCount,
+            offScreenItemsCount: offScreenItemsCount
         };
     }
     
