@@ -1,7 +1,7 @@
 
 export module ScrollExtensions {
     const OVERFLOW_REGEX: RegExp = /(auto|scroll)/;
-    const NON_SCROLLABLE_ELEMENT_ATRIBUTE: string = "data-not-scrollable";
+    const NON_SCROLLABLE_ELEMENT_ATRIBUTE = "data-not-scrollable";
 
     export enum ScrollDirection {
         Horizontal,
@@ -26,22 +26,25 @@ export module ScrollExtensions {
         if (element === null || element === undefined || element instanceof Document) {
             return {
                 scrollHost: window,
-                scrollDirection: ScrollDirection.Vertical
+                scrollDirection: ScrollDirection.Vertical,
             };
         }
 
-        var elementComputedStyle = getComputedStyle(element);
+        let elementComputedStyle = getComputedStyle(element);
         excludeStaticParent = excludeStaticParent || elementComputedStyle.position === "absolute";
 
         if (!excludeStaticParent || elementComputedStyle.position !== "static") {
-            var isOverFlow = OVERFLOW_REGEX.test(elementComputedStyle.overflow + elementComputedStyle.overflowY + elementComputedStyle.overflowX);
+            let isOverFlow = OVERFLOW_REGEX.test(elementComputedStyle.overflow + 
+                             elementComputedStyle.overflowY + 
+                             elementComputedStyle.overflowX);
 
             if (isOverFlow) {
                 // some elements are special and should not be scrollable
                 if (!element.hasAttribute(NON_SCROLLABLE_ELEMENT_ATRIBUTE)) {
                     return {
                         scrollHost: element,
-                        scrollDirection: OVERFLOW_REGEX.test(elementComputedStyle.overflowY) ? ScrollDirection.Vertical : ScrollDirection.Horizontal
+                        scrollDirection: OVERFLOW_REGEX.test(elementComputedStyle.overflowY) ? ScrollDirection.Vertical : 
+                                                                                               ScrollDirection.Horizontal,
                     };
                 }
             }
@@ -58,14 +61,14 @@ export module ScrollExtensions {
                     x: document.body.scrollLeft, 
                     y: document.body.scrollTop,
                     height: document.body.scrollHeight, 
-                    width: document.body.scrollWidth 
+                    width: document.body.scrollWidth,
                 },
                 viewport: { 
                     x: 0, 
                     y: 0, 
                     height: scrollHost.innerHeight, 
-                    width: scrollHost.innerWidth 
-                }
+                    width: scrollHost.innerWidth,
+                },
             };
         } else if (scrollHost instanceof HTMLElement) {
             return {
@@ -74,21 +77,21 @@ export module ScrollExtensions {
                     x: scrollHost.scrollLeft, 
                     y: scrollHost.scrollTop, 
                     height: scrollHost.scrollHeight, 
-                    width: scrollHost.scrollWidth 
+                    width: scrollHost.scrollWidth,
                 },
                 viewport: { 
                     x: 0, 
                     y: 0, 
                     height: scrollHost.clientHeight, 
-                    width: scrollHost.clientWidth 
-                }
+                    width: scrollHost.clientWidth,
+                },
             };
         }
         
         return null;
     }
     
-    export function setScrollOffset(scrollHost: Element | Window, x?: number, y?: number, increment: boolean = false): void {
+    export function setScrollOffset(scrollHost: Element | Window, x?: number, y?: number, increment = false): void {
         if (scrollHost instanceof Window) {
             scrollHost = document.body;
         }
@@ -112,14 +115,14 @@ export module ScrollExtensions {
 export module ObjectExtensions {
     export function assign(target: any, ...sources: any[]): Object {
         if (target == null) {
-            throw new TypeError('Cannot convert undefined or null to object');
+            throw new TypeError("Cannot convert undefined or null to object");
         }
 
         target = Object(target);
-        for (var index = 1; index < arguments.length; index++) {
-            var source = arguments[index];
+        for (let index = 1; index < arguments.length; index++) {
+            let source = arguments[index];
             if (source != null) {
-                for (var key in source) {
+                for (let key in source) {
                     if (Object.prototype.hasOwnProperty.call(source, key)) {
                         target[key] = source[key];
                     }
