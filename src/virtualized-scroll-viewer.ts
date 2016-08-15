@@ -432,7 +432,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
 
         // number of extra items to render before/after viewport bounds that
         // helps avoiding showing blank space specially when scrolling fast
-        let numberOfSafetyItems = Math.ceil((viewportSafetyMargin * 2) / averageItemSize);
+        let numberOfSafetyItems = Math.ceil((offScreenBufferSize + (viewportSafetyMargin * 2)) / averageItemSize);
         
         // number of items that fit in the viewport
         let numberOfRenderedItems = Math.ceil(scrollInfo.viewportSize / averageItemSize) + numberOfSafetyItems;
@@ -476,7 +476,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                     let itemsGoingOnScreen = this.countItemsAndSizeThatFitIn(offScreenItems, startOffset - viewportLowerMargin, true, true);
                     if (itemsGoingOnScreen.count > 0) {
                         // compensate scroll with the size of the items going on screen
-                        scrollOffset -= itemsGoingOnScreen.size;
+                        scrollOffset = Math.max(0, scrollOffset - itemsGoingOnScreen.size);
                         // move off screen items to on screen
                         onScreenItems.push(...offScreenItems.splice(-itemsGoingOnScreen.count, itemsGoingOnScreen.count));
                     }
@@ -499,9 +499,15 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         } else {
             // scroll delta is too large
             // calculate first item in viewport based on the average item size (and some margin)
-            firstRenderedItemIndex = Math.max(0, Math.floor((scrollInfo.scrollOffset - viewportSafetyMargin) / averageItemSize));
-            scrollOffset = Math.round(firstRenderedItemIndex * averageItemSize);
-            offScreenItemsCount = 0;
+            firstRenderedItemIndex = Math.max(0, Math.floor(scrollInfo.scrollOffset / averageItemSize));
+            if (scrollInfo.scrollOffset > viewportSafetyMargin) {
+                firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - Math.ceil(viewportSafetyMargin / averageItemSize));
+                if (scrollInfo.scrollOffset > (viewportSafetyMargin + offScreenBufferSize)) {
+                    offScreenItemsCount = Math.ceil(offScreenBufferSize / averageItemSize);
+                    firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - offScreenItemsCount);
+                }
+            }
+            scrollOffset = (firstRenderedItemIndex + offScreenItemsCount) * averageItemSize;
         }
         
         if (firstRenderedItemIndex === 0 /*|| scrollInfo.scrollOffset < averageItemSize*/) {
