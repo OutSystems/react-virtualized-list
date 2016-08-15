@@ -170,7 +170,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     }
     
     private onDidUpdate(): void {
-        console.log(this.state);
+        // console.log(this.state);
         this.isComponentInitialized = true; // we render twice before initialization complete
         this.itemsContainer = ReactDOM.findDOMNode(this) as HTMLElement;
         
@@ -189,14 +189,18 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         }
     }
     
+    /**
+     * Adjust off screen elements' coordinates
+     */
     private renderOffScreenBuffer() {
         this.itemsContainer.style.position = "relative";
         let items = this.getListItems(this.itemsContainer);
         for (let item of items.slice(0, this.state.offScreenItemsCount)) {
             let child = <HTMLElement> item;
             if (child.style !== undefined) {
+                // move element offscreen
                 child.style.position = "absolute";
-                child.style.top = "-10000px";
+                child.style.top = "-10000" + PIXEL_UNITS;
             }
         }
         for (let item of items.slice(this.state.offScreenItemsCount)) {
@@ -339,6 +343,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             return false;
         }
 
+        // use elements from last positions to avoid off screen elements (because they overlap)
         let firstElement = items[items.length - 2];
         let secondElement = items[items.length - 1];
         
@@ -508,13 +513,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 }
             }
             scrollOffset = (firstRenderedItemIndex + offScreenItemsCount) * averageItemSize;
-        }
-        
-        if (firstRenderedItemIndex === 0 /*|| scrollInfo.scrollOffset < averageItemSize*/) {
-            // TODO handle accumulated error case
-            // reached the beginning of the list
-            // scrollOffset = 0;
-            firstRenderedItemIndex = 0;
         }
         
         let lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + numberOfRenderedItems);
