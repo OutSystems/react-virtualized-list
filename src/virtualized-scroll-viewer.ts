@@ -505,10 +505,10 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             // scroll delta is too large
             // calculate first item in viewport based on the average item size (and some margin)
             firstRenderedItemIndex = Math.max(0, Math.floor(scrollInfo.scrollOffset / averageItemSize));
-            if (scrollInfo.scrollOffset > viewportSafetyMargin) {
+            if (firstRenderedItemIndex > 0) {
                 firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - Math.ceil(viewportSafetyMargin / averageItemSize));
-                if (scrollInfo.scrollOffset > (viewportSafetyMargin + offScreenBufferSize)) {
-                    offScreenItemsCount = Math.ceil(offScreenBufferSize / averageItemSize);
+                if (firstRenderedItemIndex > 0) {
+                    offScreenItemsCount = Math.min(firstRenderedItemIndex, Math.ceil(offScreenBufferSize / averageItemSize));
                     firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - offScreenItemsCount);
                 }
             }
