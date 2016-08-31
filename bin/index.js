@@ -403,7 +403,6 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 lastRenderedItemIndex: 1,
                 averageItemSize: 0,
                 scrollOffset: 0,
-                effectiveScrollOffset: 0,
                 offScreenItemsCount: 0,
             };
         }
@@ -661,79 +660,90 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                     lastRenderedItemIndex: Math.max(1, this.props.length - 1),
                     averageItemSize: 0,
                     scrollOffset: 0,
-                    effectiveScrollOffset: 0,
                     offScreenItemsCount: 0,
                 };
             }
             var scrollInfo = this.getScrollInfo();
             var renderedItemsSizes = this.calculateItemsSize(items);
-            var averageItemSize = renderedItemsSizes.total / (items.length * 1.0);
+            var offScreenItemsCount = this.state.offScreenItemsCount;
+            var onScreenItems = renderedItemsSizes.sizes.slice(offScreenItemsCount);
+            var onScreenItemsSize = onScreenItems.reduce(function (p, c) { return p + c; });
+            var averageItemSize = onScreenItemsSize / (onScreenItems.length * 1.0);
             if (this.state.averageItemSize !== 0) {
                 averageItemSize = (0.8 * this.state.averageItemSize) + (0.2 * averageItemSize);
             }
             var pageBufferSize = (this.props.pageBufferSize || DEFAULT_BUFFER_SIZE) * BUFFER_MULTIPLIER;
             var viewportSafetyMargin = scrollInfo.viewportSize * (pageBufferSize / 2);
-            var offScreenBufferSize = viewportSafetyMargin;
-            var numberOfSafetyItems = Math.ceil((offScreenBufferSize + (viewportSafetyMargin * 2)) / averageItemSize);
-            var numberOfRenderedItems = Math.ceil(scrollInfo.viewportSize / averageItemSize) + numberOfSafetyItems;
+            var itemsFittingViewportCount = Math.ceil(scrollInfo.viewportSize / averageItemSize);
+            var maxOffScreenItemsCount = Math.ceil(scrollInfo.viewportSize * 1.5 / averageItemSize);
+            var safetyItemsCount = Math.ceil(viewportSafetyMargin * 2) / averageItemSize;
+            var renderedItemsCount = itemsFittingViewportCount + safetyItemsCount + maxOffScreenItemsCount;
             var scrollOffset = this.state.scrollOffset;
             var firstRenderedItemIndex = this.state.firstRenderedItemIndex;
             var viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMargin;
-            var offScreenItemsCount = this.state.offScreenItemsCount;
-            var scrollDelta = scrollInfo.scrollOffset - this.state.effectiveScrollOffset;
-            if (scrollDelta <= renderedItemsSizes.total) {
-                var offScreenItems = renderedItemsSizes.sizes.slice(0, offScreenItemsCount);
-                var onScreenItems = renderedItemsSizes.sizes.slice(offScreenItemsCount);
-                var firstSpacerBounds = this.itemsContainer.children[0].getBoundingClientRect();
-                var startOffset = this.getDimension(firstSpacerBounds.bottom, firstSpacerBounds.right);
-                if (scrollDelta > 0) {
-                    if (startOffset < viewportLowerMargin) {
-                        var itemsGoingOffScreen = this.countItemsAndSizeThatFitIn(onScreenItems, viewportLowerMargin - startOffset);
-                        if (itemsGoingOffScreen.count > 0) {
-                            scrollOffset += itemsGoingOffScreen.size;
-                            offScreenItems.push.apply(offScreenItems, onScreenItems.splice(0, itemsGoingOffScreen.count));
+            var firstSpacerBounds = this.itemsContainer.children[0].getBoundingClientRect();
+            var firstItemOffset = this.getDimension(firstSpacerBounds.bottom, firstSpacerBounds.right);
+            if (Math.abs(firstItemOffset - viewportLowerMargin) <= onScreenItemsSize) {
+                if (firstItemOffset < viewportLowerMargin) {
+                    var itemsGoingOffScreen = this.countItemsAndSizeThatFitIn(onScreenItems, Math.abs(viewportLowerMargin - firstItemOffset));
+                    if (itemsGoingOffScreen.count > 0) {
+                        scrollOffset += itemsGoingOffScreen.size;
+                        offScreenItemsCount += itemsGoingOffScreen.count;
+                        if (offScreenItemsCount > maxOffScreenItemsCount) {
+                            var leavingItemsCount = offScreenItemsCount - maxOffScreenItemsCount;
+                            firstRenderedItemIndex += leavingItemsCount;
+                            offScreenItemsCount = maxOffScreenItemsCount;
                         }
                     }
                 }
-                else if (scrollDelta < 0) {
-                    if (startOffset > viewportLowerMargin) {
-                        var itemsGoingOnScreen = this.countItemsAndSizeThatFitIn(offScreenItems, startOffset - viewportLowerMargin, true, true);
-                        if (itemsGoingOnScreen.count > 0) {
-                            scrollOffset = Math.max(0, scrollOffset - itemsGoingOnScreen.size);
-                            onScreenItems.push.apply(onScreenItems, offScreenItems.splice(-itemsGoingOnScreen.count, itemsGoingOnScreen.count));
-                        }
+                else if (firstItemOffset > viewportLowerMargin) {
+                    var availableSpace = Math.abs(firstItemOffset - viewportLowerMargin);
+                    var offScreenItems = renderedItemsSizes.sizes.slice(0, offScreenItemsCount);
+                    var itemsGoingOnScreen = this.countItemsAndSizeThatFitIn(offScreenItems, availableSpace, true, true);
+                    if (itemsGoingOnScreen.count > 0) {
+                        scrollOffset = Math.max(0, scrollOffset - itemsGoingOnScreen.size);
+                        offScreenItemsCount -= itemsGoingOnScreen.count;
+                        availableSpace -= itemsGoingOnScreen.size;
                     }
-                }
-                var offScreenItemsSize = this.countItemsAndSizeThatFitIn(offScreenItems, offScreenBufferSize, true, true);
-                if (offScreenItemsSize.size < offScreenBufferSize) {
-                    var availableOffScreenBufferSize = offScreenBufferSize - offScreenItemsSize.size;
-                    var enteringItemsCount = Math.min(firstRenderedItemIndex, Math.ceil(availableOffScreenBufferSize / averageItemSize));
-                    offScreenItemsCount = offScreenItemsSize.count + enteringItemsCount;
-                    firstRenderedItemIndex -= enteringItemsCount;
-                }
-                else if (offScreenItemsSize.size > offScreenBufferSize) {
-                    firstRenderedItemIndex += offScreenItems.length - offScreenItemsSize.count;
-                    offScreenItemsCount = offScreenItemsSize.count;
+                    if (availableSpace > 0) {
+                        if (offScreenItemsCount !== 0) {
+                            throw "offScreenItemsCount should be 0";
+                        }
+                        var enteringItemsCount = Math.min(firstRenderedItemIndex, Math.ceil(availableSpace / averageItemSize));
+                        firstRenderedItemIndex -= enteringItemsCount;
+                        scrollOffset -= enteringItemsCount * averageItemSize;
+                    }
+                    if (offScreenItemsCount < maxOffScreenItemsCount) {
+                        var enteringItemsCount = Math.min(firstRenderedItemIndex, maxOffScreenItemsCount - offScreenItemsCount);
+                        firstRenderedItemIndex -= enteringItemsCount;
+                        offScreenItemsCount += enteringItemsCount;
+                    }
                 }
             }
             else {
-                firstRenderedItemIndex = Math.max(0, Math.floor(scrollInfo.scrollOffset / averageItemSize));
+                var startOffset = this.getDimension(firstSpacerBounds.top, firstSpacerBounds.left);
+                if (startOffset < scrollInfo.viewportLowerBound) {
+                    startOffset = Math.abs(startOffset - scrollInfo.viewportLowerBound);
+                }
+                else {
+                    startOffset = 0;
+                }
+                firstRenderedItemIndex = Math.max(0, Math.floor(startOffset / averageItemSize) - 1);
+                offScreenItemsCount = 0;
                 if (firstRenderedItemIndex > 0) {
                     firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - Math.ceil(viewportSafetyMargin / averageItemSize));
-                    if (firstRenderedItemIndex > 0) {
-                        offScreenItemsCount = Math.min(firstRenderedItemIndex, Math.ceil(offScreenBufferSize / averageItemSize));
-                        firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - offScreenItemsCount);
-                    }
                 }
-                scrollOffset = (firstRenderedItemIndex + offScreenItemsCount) * averageItemSize;
+                scrollOffset = firstRenderedItemIndex * averageItemSize;
             }
-            var lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + numberOfRenderedItems);
+            if (firstRenderedItemIndex === 0 && offScreenItemsCount === 0) {
+                scrollOffset = 0;
+            }
+            var lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + renderedItemsCount);
             return {
                 firstRenderedItemIndex: firstRenderedItemIndex,
                 lastRenderedItemIndex: lastRenderedItemIndex,
                 averageItemSize: averageItemSize,
                 scrollOffset: scrollOffset,
-                effectiveScrollOffset: scrollInfo.scrollOffset,
                 offScreenItemsCount: offScreenItemsCount,
             };
         };

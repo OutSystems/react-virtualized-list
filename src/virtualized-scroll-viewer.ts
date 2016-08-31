@@ -34,7 +34,6 @@ export interface IScrollViewerState {
     lastRenderedItemIndex: number;
     averageItemSize: number;
     scrollOffset: number; // scroll compensation for missing items
-    effectiveScrollOffset: number; // scroll value of the scroll host
     offScreenItemsCount: number; 
 }
 
@@ -67,7 +66,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             lastRenderedItemIndex: 1,
             averageItemSize: 0,
             scrollOffset: 0,
-            effectiveScrollOffset: 0,
             offScreenItemsCount: 0,
         };
     }
@@ -415,7 +413,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 lastRenderedItemIndex: Math.max(1, this.props.length - 1), // we need at least 2 elements to find the stacking direction
                 averageItemSize: 0,
                 scrollOffset: 0,
-                effectiveScrollOffset: 0,
                 offScreenItemsCount: 0,
             };
         }
@@ -424,7 +421,10 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         
         // get rendered items sizes
         let renderedItemsSizes = this.calculateItemsSize(items);
-        let averageItemSize = renderedItemsSizes.total / (items.length * 1.0);
+        let offScreenItemsCount = this.state.offScreenItemsCount;
+        let onScreenItems = renderedItemsSizes.sizes.slice(offScreenItemsCount);
+        let onScreenItemsSize = onScreenItems.reduce((p, c) => p + c);
+        let averageItemSize = onScreenItemsSize / (onScreenItems.length * 1.0); // consider only on screen items for average item size
         
         if (this.state.averageItemSize !== 0) {
             // to avoid great oscillation, give more weight to aggregated averageItemSize
@@ -433,96 +433,106 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         
         let pageBufferSize = (this.props.pageBufferSize || DEFAULT_BUFFER_SIZE) * BUFFER_MULTIPLIER;
         let viewportSafetyMargin = scrollInfo.viewportSize * (pageBufferSize / 2); // extra safety space for some more items
-        let offScreenBufferSize = viewportSafetyMargin;
+        let itemsFittingViewportCount = Math.ceil(scrollInfo.viewportSize / averageItemSize);
+        let maxOffScreenItemsCount = Math.ceil(scrollInfo.viewportSize * 1.5 / averageItemSize); // place an extra viewport of items offscreen
 
         // number of extra items to render before/after viewport bounds that
         // helps avoiding showing blank space specially when scrolling fast
-        let numberOfSafetyItems = Math.ceil((offScreenBufferSize + (viewportSafetyMargin * 2)) / averageItemSize);
+        let safetyItemsCount = Math.ceil(viewportSafetyMargin * 2) / averageItemSize;
         
-        // number of items that fit in the viewport
-        let numberOfRenderedItems = Math.ceil(scrollInfo.viewportSize / averageItemSize) + numberOfSafetyItems;
+        // rendered items = items in viewport + safety items + off screen items
+        let renderedItemsCount = itemsFittingViewportCount + safetyItemsCount + maxOffScreenItemsCount;
         
         let scrollOffset = this.state.scrollOffset;
         let firstRenderedItemIndex = this.state.firstRenderedItemIndex;
         let viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMargin;
-        let offScreenItemsCount = this.state.offScreenItemsCount;
-        
-        let scrollDelta = scrollInfo.scrollOffset - this.state.effectiveScrollOffset;
 
-        if (scrollDelta <= renderedItemsSizes.total) {
-
-            let offScreenItems = renderedItemsSizes.sizes.slice(0, offScreenItemsCount);
-            let onScreenItems = renderedItemsSizes.sizes.slice(offScreenItemsCount);
-
-            // get first spacer bounds instead of picking first item due to items rendered offscreen which have wrong coordinates
-            let firstSpacerBounds = this.itemsContainer.children[0].getBoundingClientRect();
-            let startOffset = this.getDimension(firstSpacerBounds.bottom, firstSpacerBounds.right);
-                
-            if (scrollDelta > 0) {
-                // scrolling down/right
-                
-                if (startOffset < viewportLowerMargin) {
-                    // find the items that will go offscreen
-                    let itemsGoingOffScreen = this.countItemsAndSizeThatFitIn(onScreenItems, viewportLowerMargin - startOffset);
+        // get first spacer bounds instead of picking first item due to items rendered offscreen which have wrong coordinates
+        let firstSpacerBounds = this.itemsContainer.children[0].getBoundingClientRect();
+        let firstItemOffset = this.getDimension(firstSpacerBounds.bottom, firstSpacerBounds.right);
                     
-                    if (itemsGoingOffScreen.count > 0) {
-                        // compensate scroll with the size of the items going off screen
-                        scrollOffset += itemsGoingOffScreen.size;
-                        // move on screen items to off screen
-                        offScreenItems.push(...onScreenItems.splice(0, itemsGoingOffScreen.count));
+        if (Math.abs(firstItemOffset - viewportLowerMargin) <= onScreenItemsSize) {
+            if (firstItemOffset < viewportLowerMargin) {
+                // find the onscreen items that will go offscreen
+                let itemsGoingOffScreen = this.countItemsAndSizeThatFitIn(onScreenItems, Math.abs(viewportLowerMargin - firstItemOffset));
+                
+                if (itemsGoingOffScreen.count > 0) {
+                    // compensate scroll with the size of the items going offscreen
+                    scrollOffset += itemsGoingOffScreen.size;
+                    // move onscreen items to offscreen
+                    offScreenItemsCount += itemsGoingOffScreen.count;
+                    
+                    if (offScreenItemsCount > maxOffScreenItemsCount) {
+                        // offscreen items overflowing, discard some
+                        let leavingItemsCount =  offScreenItemsCount - maxOffScreenItemsCount;
+                        // TODO we must check if firstRenderedItemIndex does not go behond limits 
+                        firstRenderedItemIndex += leavingItemsCount;
+                        offScreenItemsCount = maxOffScreenItemsCount;
                     }
                 }
-                
-            } else if (scrollDelta < 0) {
-                // scrolling up/left
-                
-                if (startOffset > viewportLowerMargin) {
-                    // find the items that will go on screen
-                    let itemsGoingOnScreen = this.countItemsAndSizeThatFitIn(offScreenItems, startOffset - viewportLowerMargin, true, true);
-                    if (itemsGoingOnScreen.count > 0) {
-                        // compensate scroll with the size of the items going on screen
-                        scrollOffset = Math.max(0, scrollOffset - itemsGoingOnScreen.size);
-                        // move off screen items to on screen
-                        onScreenItems.push(...offScreenItems.splice(-itemsGoingOnScreen.count, itemsGoingOnScreen.count));
-                    }
+            } else if (firstItemOffset > viewportLowerMargin) {
+                let availableSpace = Math.abs(firstItemOffset - viewportLowerMargin);
+                let offScreenItems = renderedItemsSizes.sizes.slice(0, offScreenItemsCount);
+                // find the items that will go onscreen
+                let itemsGoingOnScreen = this.countItemsAndSizeThatFitIn(offScreenItems, availableSpace, true, true);
+                if (itemsGoingOnScreen.count > 0) {
+                    // compensate scroll with the size of the items going onscreen
+                    scrollOffset = Math.max(0, scrollOffset - itemsGoingOnScreen.size);
+                    // move offscreen items to onscreen
+                    offScreenItemsCount -= itemsGoingOnScreen.count;
+                    availableSpace -= itemsGoingOnScreen.size;
                 }
-            }
-
-            let offScreenItemsSize = this.countItemsAndSizeThatFitIn(offScreenItems, offScreenBufferSize, true, true);
-            if (offScreenItemsSize.size < offScreenBufferSize) {
-                // space available in the off scree∫n buffer, push new items there
-                let availableOffScreenBufferSize = offScreenBufferSize - offScreenItemsSize.size;
-                let enteringItemsCount = Math.min(firstRenderedItemIndex, Math.ceil(availableOffScreenBufferSize / averageItemSize));
-                offScreenItemsCount = offScreenItemsSize.count + enteringItemsCount;
-                firstRenderedItemIndex -= enteringItemsCount;
-            } else if (offScreenItemsSize.size > offScreenBufferSize) {
-                // off screen buffer overflowing, remove overflowing items
-                firstRenderedItemIndex += offScreenItems.length - offScreenItemsSize.count;
-                offScreenItemsCount = offScreenItemsSize.count;
+                
+                if (availableSpace > 0) {
+                    // all offscreen items went onscreen but there's still room for more items
+                    if (offScreenItemsCount !== 0) {
+                        throw "offScreenItemsCount should be 0";
+                    }
+                    
+                    let enteringItemsCount = Math.min(firstRenderedItemIndex, Math.ceil(availableSpace / averageItemSize));
+                    firstRenderedItemIndex -= enteringItemsCount;
+                    scrollOffset -= enteringItemsCount * averageItemSize; // compensate scroll with the (average) size of items entering
+                }
+                
+                if (offScreenItemsCount < maxOffScreenItemsCount) {
+                    // room for more offscreen items, add some 
+                    let enteringItemsCount = Math.min(firstRenderedItemIndex, maxOffScreenItemsCount - offScreenItemsCount);
+                    firstRenderedItemIndex -= enteringItemsCount;
+                    offScreenItemsCount += enteringItemsCount;
+                }
             }
 
         } else {
             // scroll delta is too large
+            let startOffset = this.getDimension(firstSpacerBounds.top, firstSpacerBounds.left);
+            if (startOffset < scrollInfo.viewportLowerBound) {
+                // calculate the distance between the start of the list and viewport lower bound
+                startOffset = Math.abs(startOffset - scrollInfo.viewportLowerBound); 
+            } else {
+                startOffset = 0;
+            }
+            
             // calculate first item in viewport based on the average item size (and some margin)
-            firstRenderedItemIndex = Math.max(0, Math.floor(scrollInfo.scrollOffset / averageItemSize));
+            firstRenderedItemIndex = Math.max(0, Math.floor(startOffset / averageItemSize) - 1);
+            offScreenItemsCount = 0;
             if (firstRenderedItemIndex > 0) {
                 firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - Math.ceil(viewportSafetyMargin / averageItemSize));
-                if (firstRenderedItemIndex > 0) {
-                    offScreenItemsCount = Math.min(firstRenderedItemIndex, Math.ceil(offScreenBufferSize / averageItemSize));
-                    firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - offScreenItemsCount);
-                }
             }
-            scrollOffset = (firstRenderedItemIndex + offScreenItemsCount) * averageItemSize;
+            scrollOffset = firstRenderedItemIndex * averageItemSize;
         }
         
-        let lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + numberOfRenderedItems);
+        if (firstRenderedItemIndex === 0 && offScreenItemsCount === 0) {
+            // prevent offset > 0 when reached beginning of the list
+            scrollOffset = 0;
+        }
+        
+        let lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + renderedItemsCount);
         
         return {
             firstRenderedItemIndex: firstRenderedItemIndex,
             lastRenderedItemIndex: lastRenderedItemIndex,
             averageItemSize: averageItemSize,
             scrollOffset: scrollOffset,
-            effectiveScrollOffset: scrollInfo.scrollOffset,
             offScreenItemsCount: offScreenItemsCount,
         };
     }
