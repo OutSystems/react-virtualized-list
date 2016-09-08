@@ -112,9 +112,15 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Adds hooks to capture scroll events of the scrollable parent
      */
     private addScrollHandler(): void {
-        let scrollHost = this.getScrollHostInfo().scrollHost;
+        if (this.isDisposed) {
+            return;
+        }
+        this.scrollHostInfo = null; // clear previously cached scroll host info (might be wrong)
+        let scrollHostInfo = this.getScrollHostInfo();
+        let scrollHost = scrollHostInfo.scrollHost;
         scrollHost.addEventListener(SCROLL_EVENT_NAME, this.scrollHandler);
         scrollHost.addEventListener(RESIZE_EVENT_NAME, this.scrollHandler);
+        this.scrollDirection = scrollHostInfo.scrollDirection; // won't be updated later if changes (case not supported now)
     }
     
     private removeScrollHandler(): void {
@@ -125,19 +131,18 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     
     public componentDidMount(): void {
         this.itemsContainer = ReactDOM.findDOMNode(this) as HTMLElement;
-        let attachScrollListener = () => {
-            if (this.isDisposed) {
-                return;
-            }
+
+        let onWindowScroll = () => { 
+            window.removeEventListener(SCROLL_EVENT_NAME, onWindowScroll);
             this.addScrollHandler();
-            this.scrollDirection = this.getScrollHostInfo().scrollDirection; // won't be updated later if changes (case not supported now)
         };
-        if (this.props.length === 0) {
-            // avoid forcing sync layout computation when there's no items, postpone for improved performance 
-            requestAnimationFrame(() => setTimeout(attachScrollListener, 1));
-        } else {
-            attachScrollListener();
-        }
+
+        requestAnimationFrame(() => {
+            // loading css might take some time, that's why we wait for user interaction 
+            // (hoping that he acts after things are ready)
+            // and delay scroll listener events attach until a scroll event is fired
+            window.addEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
+        });
 
         // rerender with the right amount of items in the viewport
         // we first rendered only just 2 elements, now lets render the remaining visible elements

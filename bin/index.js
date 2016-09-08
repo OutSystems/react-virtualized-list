@@ -435,9 +435,15 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             return result;
         };
         VirtualizedScrollViewer.prototype.addScrollHandler = function () {
-            var scrollHost = this.getScrollHostInfo().scrollHost;
+            if (this.isDisposed) {
+                return;
+            }
+            this.scrollHostInfo = null;
+            var scrollHostInfo = this.getScrollHostInfo();
+            var scrollHost = scrollHostInfo.scrollHost;
             scrollHost.addEventListener(SCROLL_EVENT_NAME, this.scrollHandler);
             scrollHost.addEventListener(RESIZE_EVENT_NAME, this.scrollHandler);
+            this.scrollDirection = scrollHostInfo.scrollDirection;
         };
         VirtualizedScrollViewer.prototype.removeScrollHandler = function () {
             var scrollHost = this.getScrollHostInfo().scrollHost;
@@ -447,19 +453,13 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
         VirtualizedScrollViewer.prototype.componentDidMount = function () {
             var _this = this;
             this.itemsContainer = ReactDOM.findDOMNode(this);
-            var attachScrollListener = function () {
-                if (_this.isDisposed) {
-                    return;
-                }
+            var onWindowScroll = function () {
+                window.removeEventListener(SCROLL_EVENT_NAME, onWindowScroll);
                 _this.addScrollHandler();
-                _this.scrollDirection = _this.getScrollHostInfo().scrollDirection;
             };
-            if (this.props.length === 0) {
-                requestAnimationFrame(function () { return setTimeout(attachScrollListener, 1); });
-            }
-            else {
-                attachScrollListener();
-            }
+            requestAnimationFrame(function () {
+                window.addEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
+            });
             this.setState(this.getCurrentScrollViewerState(this.props.length));
         };
         VirtualizedScrollViewer.prototype.componentWillUnmount = function () {
