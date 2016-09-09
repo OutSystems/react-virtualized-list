@@ -454,7 +454,7 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             var _this = this;
             this.itemsContainer = ReactDOM.findDOMNode(this);
             var onWindowScroll = function () {
-                window.removeEventListener(SCROLL_EVENT_NAME, onWindowScroll);
+                window.removeEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
                 _this.addScrollHandler();
             };
             requestAnimationFrame(function () {

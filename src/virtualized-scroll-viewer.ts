@@ -133,14 +133,14 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         this.itemsContainer = ReactDOM.findDOMNode(this) as HTMLElement;
 
         let onWindowScroll = () => { 
-            window.removeEventListener(SCROLL_EVENT_NAME, onWindowScroll);
+            window.removeEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
             this.addScrollHandler();
         };
 
         requestAnimationFrame(() => {
             // loading css might take some time, that's why we wait for user interaction 
             // (hoping that he acts after things are ready)
-            // and delay scroll listener events attach until a scroll event is fired
+            // and defer scroll listener events attach until a scroll event is fired
             window.addEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
         });
 
