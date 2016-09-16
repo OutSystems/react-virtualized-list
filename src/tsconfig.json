@@ -5,9 +5,14 @@
         "removeComments": true,
         "preserveConstEnums": true,
         "sourceMap": false,
-        "outFile": "bin/index.js",
+        "outFile": "../bin/virtualized-scroll-viewer.js",
 		"target": "es5",
 		"jsx": "react",
         "experimentalDecorators": true
-    }
+    },
+    "exclude": [
+        "index.tsx",
+        "images.ts",
+        "virtualized-list.tsx"
+    ]
 }

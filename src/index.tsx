@@ -13,19 +13,19 @@ class App extends React.Component<{}, { items: number, pageBufferSize: number }>
         };
     }
     
-    refresh() {
+    private refresh() {
         this.setState({ 
             items: parseInt((this.refs["itemsCount"] as HTMLInputElement).value),
             pageBufferSize: parseInt((this.refs["pageBufferSize"] as HTMLInputElement).value)
         });
     }
     
-    setScroll() {
+    private setScroll() {
         let offset = parseInt( (this.refs["scrollOffset"] as HTMLInputElement).value);
         (this.refs["list"] as VirtualizedList).setScrollOffset(offset);
     }
     
-    render() {
+    public render() {
         let imagesCount = Images.length;
         let list: { index: number, image: string }[] = [];
         for (let i = 0; i < this.state.items; i++) {
