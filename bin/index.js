@@ -404,6 +404,7 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 averageItemSize: 0,
                 scrollOffset: 0,
                 offScreenItemsCount: 0,
+                effectiveScrollOffset: Number.MIN_VALUE
             };
         }
         VirtualizedScrollViewer.prototype.getScrollHostInfo = function () {
@@ -524,8 +525,10 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 }
                 try {
                     var newState = _this.getCurrentScrollViewerState(_this.props.length);
-                    _this.isScrollOngoing = true;
-                    _this.setState(newState, function () { return _this.isScrollOngoing = false; });
+                    if (newState !== _this.state) {
+                        _this.isScrollOngoing = true;
+                        _this.setState(newState, function () { return _this.isScrollOngoing = false; });
+                    }
                 }
                 finally {
                     _this.pendingScrollAsyncUpdateHandle = 0;
@@ -653,6 +656,10 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             return { size: itemsSize, count: i };
         };
         VirtualizedScrollViewer.prototype.getCurrentScrollViewerState = function (listLength) {
+            var scrollInfo = this.getScrollInfo();
+            if (Math.abs(scrollInfo.scrollOffset - this.state.effectiveScrollOffset) < 100) {
+                return this.state;
+            }
             var items = this.getListItems(this.itemsContainer);
             if (!this.areElementsStacked(items)) {
                 return {
@@ -661,9 +668,9 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                     averageItemSize: 0,
                     scrollOffset: 0,
                     offScreenItemsCount: 0,
+                    effectiveScrollOffset: scrollInfo.scrollOffset
                 };
             }
-            var scrollInfo = this.getScrollInfo();
             var renderedItemsSizes = this.calculateItemsSize(items);
             var offScreenItemsCount = this.state.offScreenItemsCount;
             var onScreenItems = renderedItemsSizes.sizes.slice(offScreenItemsCount);
@@ -745,6 +752,7 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 averageItemSize: averageItemSize,
                 scrollOffset: scrollOffset,
                 offScreenItemsCount: offScreenItemsCount,
+                effectiveScrollOffset: scrollInfo.scrollOffset
             };
         };
         Object.defineProperty(VirtualizedScrollViewer.prototype, "isScrolling", {

@@ -349,6 +349,7 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 averageItemSize: 0,
                 scrollOffset: 0,
                 offScreenItemsCount: 0,
+                effectiveScrollOffset: Number.MIN_VALUE
             };
         }
         VirtualizedScrollViewer.prototype.getScrollHostInfo = function () {
@@ -380,9 +381,15 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             return result;
         };
         VirtualizedScrollViewer.prototype.addScrollHandler = function () {
-            var scrollHost = this.getScrollHostInfo().scrollHost;
+            if (this.isDisposed) {
+                return;
+            }
+            this.scrollHostInfo = null;
+            var scrollHostInfo = this.getScrollHostInfo();
+            var scrollHost = scrollHostInfo.scrollHost;
             scrollHost.addEventListener(SCROLL_EVENT_NAME, this.scrollHandler);
             scrollHost.addEventListener(RESIZE_EVENT_NAME, this.scrollHandler);
+            this.scrollDirection = scrollHostInfo.scrollDirection;
         };
         VirtualizedScrollViewer.prototype.removeScrollHandler = function () {
             var scrollHost = this.getScrollHostInfo().scrollHost;
@@ -392,19 +399,13 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
         VirtualizedScrollViewer.prototype.componentDidMount = function () {
             var _this = this;
             this.itemsContainer = ReactDOM.findDOMNode(this);
-            var attachScrollListener = function () {
-                if (_this.isDisposed) {
-                    return;
-                }
+            var onWindowScroll = function () {
+                window.removeEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
                 _this.addScrollHandler();
-                _this.scrollDirection = _this.getScrollHostInfo().scrollDirection;
             };
-            if (this.props.length === 0) {
-                requestAnimationFrame(function () { return setTimeout(attachScrollListener, 1); });
-            }
-            else {
-                attachScrollListener();
-            }
+            requestAnimationFrame(function () {
+                window.addEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
+            });
             this.setState(this.getCurrentScrollViewerState(this.props.length));
         };
         VirtualizedScrollViewer.prototype.componentWillUnmount = function () {
@@ -468,9 +469,11 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                     return;
                 }
                 try {
-                    var newState = _this.getCurrentScrollViewerState(_this.props.length);
-                    _this.isScrollOngoing = true;
-                    _this.setState(newState, function () { return _this.isScrollOngoing = false; });
+                    var newState = _this.getCurrentScrollViewerState(_this.props.length, true);
+                    if (newState !== _this.state) {
+                        _this.isScrollOngoing = true;
+                        _this.setState(newState, function () { return _this.isScrollOngoing = false; });
+                    }
                 }
                 finally {
                     _this.pendingScrollAsyncUpdateHandle = 0;
@@ -597,7 +600,14 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             }
             return { size: itemsSize, count: i };
         };
-        VirtualizedScrollViewer.prototype.getCurrentScrollViewerState = function (listLength) {
+        VirtualizedScrollViewer.prototype.getCurrentScrollViewerState = function (listLength, returnSameStateOnSmallChanges) {
+            if (returnSameStateOnSmallChanges === void 0) { returnSameStateOnSmallChanges = false; }
+            var scrollInfo = this.getScrollInfo();
+            var pageBufferSize = (this.props.pageBufferSize || DEFAULT_BUFFER_SIZE) * BUFFER_MULTIPLIER;
+            var viewportSafetyMargin = scrollInfo.viewportSize * (pageBufferSize / 2);
+            if (returnSameStateOnSmallChanges && Math.abs(scrollInfo.scrollOffset - this.state.effectiveScrollOffset) < (viewportSafetyMargin * 0.5)) {
+                return this.state;
+            }
             var items = this.getListItems(this.itemsContainer);
             if (!this.areElementsStacked(items)) {
                 return {
@@ -606,9 +616,9 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                     averageItemSize: 0,
                     scrollOffset: 0,
                     offScreenItemsCount: 0,
+                    effectiveScrollOffset: scrollInfo.scrollOffset
                 };
             }
-            var scrollInfo = this.getScrollInfo();
             var renderedItemsSizes = this.calculateItemsSize(items);
             var offScreenItemsCount = this.state.offScreenItemsCount;
             var onScreenItems = renderedItemsSizes.sizes.slice(offScreenItemsCount);
@@ -617,8 +627,6 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             if (this.state.averageItemSize !== 0) {
                 averageItemSize = (0.8 * this.state.averageItemSize) + (0.2 * averageItemSize);
             }
-            var pageBufferSize = (this.props.pageBufferSize || DEFAULT_BUFFER_SIZE) * BUFFER_MULTIPLIER;
-            var viewportSafetyMargin = scrollInfo.viewportSize * (pageBufferSize / 2);
             var itemsFittingViewportCount = Math.ceil(scrollInfo.viewportSize / averageItemSize);
             var maxOffScreenItemsCount = Math.ceil(scrollInfo.viewportSize * 1.5 / averageItemSize);
             var safetyItemsCount = Math.ceil(viewportSafetyMargin * 2) / averageItemSize;
@@ -690,6 +698,7 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 averageItemSize: averageItemSize,
                 scrollOffset: scrollOffset,
                 offScreenItemsCount: offScreenItemsCount,
+                effectiveScrollOffset: scrollInfo.scrollOffset
             };
         };
         Object.defineProperty(VirtualizedScrollViewer.prototype, "isScrolling", {
