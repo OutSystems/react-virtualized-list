@@ -18,7 +18,8 @@ export interface IScrollViewerProperties extends React.Props<VirtualizedScrollVi
     renderItems: (startIndex: number, length: number) => React.ReactFragment;
     scrollChanged?: () => void;
     renderWrapper: (children: React.ReactFragment) => JSX.Element;
-    pageBufferSize?: number; // number of pages buffered  
+    pageBufferSize?: number; // number of pages buffered
+    initializationCompleted?: () => void;  
 }
 
 interface IScrollInfo {
@@ -176,7 +177,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     
     private onDidUpdate(): void {
         // console.log(this.state);
-        this.isComponentInitialized = true; // we render twice before initialization complete
         this.itemsContainer = ReactDOM.findDOMNode(this) as HTMLElement;
         
         this.renderOffScreenBuffer();
@@ -184,7 +184,14 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         if (this.setPendingScroll) {
             this.setPendingScroll();
             this.setPendingScroll = null;
-        } 
+        }
+
+        if (!this.isComponentInitialized) {
+            this.isComponentInitialized = true; // we render twice before initialization complete
+            if (this.props.initializationCompleted) {
+                this.props.initializationCompleted();
+            }
+        }
         
         if (this.hasPendingPropertiesUpdate) {
             // updated with list changes, let's compute the visible items
@@ -435,6 +442,12 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             };
         }
         
+        let lastSpacerBounds = this.itemsContainer.lastElementChild.getBoundingClientRect();
+        if (this.getDimension(lastSpacerBounds.bottom, lastSpacerBounds.right) < -100) {
+            // list is out-of-viewport, no need to compute new state
+            return this.state;
+        }
+
         // get rendered items sizes
         let renderedItemsSizes = this.calculateItemsSize(items);
         let offScreenItemsCount = this.state.offScreenItemsCount;
@@ -448,21 +461,21 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         }
         
         let itemsFittingViewportCount = Math.ceil(scrollInfo.viewportSize / averageItemSize);
-        let maxOffScreenItemsCount = Math.ceil(scrollInfo.viewportSize * 1.5 / averageItemSize); // place an extra viewport of items offscreen
+        let maxOffScreenItemsCount = itemsFittingViewportCount; // place an extra viewport of items offscreen
 
         // number of extra items to render before/after viewport bounds that
         // helps avoiding showing blank space specially when scrolling fast
-        let safetyItemsCount = Math.ceil(viewportSafetyMargin * 2) / averageItemSize;
+        let safetyItemsCount = Math.ceil(viewportSafetyMargin * 2 / averageItemSize);
         
         // rendered items = items in viewport + safety items + off screen items
-        let renderedItemsCount = itemsFittingViewportCount + safetyItemsCount + maxOffScreenItemsCount;
+        let renderedItemsCount = Math.min(listLength, itemsFittingViewportCount + safetyItemsCount + maxOffScreenItemsCount);
         
         let scrollOffset = this.state.scrollOffset;
         let firstRenderedItemIndex = this.state.firstRenderedItemIndex;
         let viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMargin;
 
         // get first spacer bounds instead of picking first item due to items rendered offscreen which have wrong coordinates
-        let firstSpacerBounds = this.itemsContainer.children[0].getBoundingClientRect();
+        let firstSpacerBounds = this.itemsContainer.firstElementChild.getBoundingClientRect();
         let firstItemOffset = this.getDimension(firstSpacerBounds.bottom, firstSpacerBounds.right);
                     
         if (Math.abs(firstItemOffset - viewportLowerMargin) <= onScreenItemsSize) {
@@ -532,6 +545,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             if (firstRenderedItemIndex > 0) {
                 firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - Math.ceil(viewportSafetyMargin / averageItemSize));
             }
+            firstRenderedItemIndex = Math.max(0, Math.min(firstRenderedItemIndex, listLength - 1 - renderedItemsCount));
             scrollOffset = firstRenderedItemIndex * averageItemSize;
         }
         

@@ -427,12 +427,17 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             });
         };
         VirtualizedScrollViewer.prototype.onDidUpdate = function () {
-            this.isComponentInitialized = true;
             this.itemsContainer = ReactDOM.findDOMNode(this);
             this.renderOffScreenBuffer();
             if (this.setPendingScroll) {
                 this.setPendingScroll();
                 this.setPendingScroll = null;
+            }
+            if (!this.isComponentInitialized) {
+                this.isComponentInitialized = true;
+                if (this.props.initializationCompleted) {
+                    this.props.initializationCompleted();
+                }
             }
             if (this.hasPendingPropertiesUpdate) {
                 this.hasPendingPropertiesUpdate = false;
@@ -619,6 +624,10 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                     effectiveScrollOffset: scrollInfo.scrollOffset
                 };
             }
+            var lastSpacerBounds = this.itemsContainer.lastElementChild.getBoundingClientRect();
+            if (this.getDimension(lastSpacerBounds.bottom, lastSpacerBounds.right) < -100) {
+                return this.state;
+            }
             var renderedItemsSizes = this.calculateItemsSize(items);
             var offScreenItemsCount = this.state.offScreenItemsCount;
             var onScreenItems = renderedItemsSizes.sizes.slice(offScreenItemsCount);
@@ -628,13 +637,13 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 averageItemSize = (0.8 * this.state.averageItemSize) + (0.2 * averageItemSize);
             }
             var itemsFittingViewportCount = Math.ceil(scrollInfo.viewportSize / averageItemSize);
-            var maxOffScreenItemsCount = Math.ceil(scrollInfo.viewportSize * 1.5 / averageItemSize);
-            var safetyItemsCount = Math.ceil(viewportSafetyMargin * 2) / averageItemSize;
-            var renderedItemsCount = itemsFittingViewportCount + safetyItemsCount + maxOffScreenItemsCount;
+            var maxOffScreenItemsCount = itemsFittingViewportCount;
+            var safetyItemsCount = Math.ceil(viewportSafetyMargin * 2 / averageItemSize);
+            var renderedItemsCount = Math.min(listLength, itemsFittingViewportCount + safetyItemsCount + maxOffScreenItemsCount);
             var scrollOffset = this.state.scrollOffset;
             var firstRenderedItemIndex = this.state.firstRenderedItemIndex;
             var viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMargin;
-            var firstSpacerBounds = this.itemsContainer.children[0].getBoundingClientRect();
+            var firstSpacerBounds = this.itemsContainer.firstElementChild.getBoundingClientRect();
             var firstItemOffset = this.getDimension(firstSpacerBounds.bottom, firstSpacerBounds.right);
             if (Math.abs(firstItemOffset - viewportLowerMargin) <= onScreenItemsSize) {
                 if (firstItemOffset < viewportLowerMargin) {
@@ -686,6 +695,7 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 if (firstRenderedItemIndex > 0) {
                     firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - Math.ceil(viewportSafetyMargin / averageItemSize));
                 }
+                firstRenderedItemIndex = Math.max(0, Math.min(firstRenderedItemIndex, listLength - 1 - renderedItemsCount));
                 scrollOffset = firstRenderedItemIndex * averageItemSize;
             }
             if (firstRenderedItemIndex === 0 && offScreenItemsCount === 0) {
