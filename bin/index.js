@@ -389,6 +389,7 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
     var FLEXBOX_DISPLAY = document.createElement("p").style.flex === undefined ? "-webkit-flex" : "flex";
     var DEFAULT_BUFFER_SIZE = 3;
     var BUFFER_MULTIPLIER = insideiOSWebView() ? 4 : 1;
+    var MIN_ITEM_SIZE = 20;
     var VirtualizedScrollViewer = (function (_super) {
         __extends(VirtualizedScrollViewer, _super);
         function VirtualizedScrollViewer(props, context) {
@@ -456,10 +457,14 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             this.itemsContainer = ReactDOM.findDOMNode(this);
             var onWindowScroll = function () {
                 window.removeEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
+                window.removeEventListener(RESIZE_EVENT_NAME, onWindowScroll, true);
                 _this.addScrollHandler();
             };
             requestAnimationFrame(function () {
-                window.addEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
+                if (!_this.isDisposed) {
+                    window.addEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
+                    window.addEventListener(RESIZE_EVENT_NAME, onWindowScroll, true);
+                }
             });
             this.setState(this.getCurrentScrollViewerState(this.props.length));
         };
@@ -482,12 +487,22 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             });
         };
         VirtualizedScrollViewer.prototype.onDidUpdate = function () {
-            this.isComponentInitialized = true;
+            var _this = this;
             this.itemsContainer = ReactDOM.findDOMNode(this);
             this.renderOffScreenBuffer();
             if (this.setPendingScroll) {
-                this.setPendingScroll();
-                this.setPendingScroll = null;
+                requestAnimationFrame(function () {
+                    if (!_this.isDisposed) {
+                        _this.setPendingScroll();
+                        _this.setPendingScroll = null;
+                    }
+                });
+            }
+            if (!this.isComponentInitialized) {
+                this.isComponentInitialized = true;
+                if (this.props.initializationCompleted) {
+                    this.props.initializationCompleted();
+                }
             }
             if (this.hasPendingPropertiesUpdate) {
                 this.hasPendingPropertiesUpdate = false;
@@ -524,7 +539,7 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                     return;
                 }
                 try {
-                    var newState = _this.getCurrentScrollViewerState(_this.props.length);
+                    var newState = _this.getCurrentScrollViewerState(_this.props.length, true);
                     if (newState !== _this.state) {
                         _this.isScrollOngoing = true;
                         _this.setState(newState, function () { return _this.isScrollOngoing = false; });
@@ -550,7 +565,7 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             var items = this.props.renderItems(firstRenderedItemIndex, length);
             var remainingSize = 0;
             if (lastRenderedItemIndex < (this.props.length - 1)) {
-                var averageItemSize = this.state.averageItemSize;
+                var averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);
                 var scrollSize = averageItemSize * this.props.length;
                 remainingSize = scrollSize - ((averageItemSize * length) + scrollOffset);
             }
@@ -589,7 +604,6 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             return items;
         };
         VirtualizedScrollViewer.prototype.getItemBounds = function (item) {
-            var MIN_SIZE = 20;
             var bounds = item.getBoundingClientRect();
             var rect = {
                 width: bounds.width,
@@ -600,14 +614,14 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 bottom: bounds.bottom,
             };
             if (this.scrollDirection === virtualized_scroll_viewer_extensions_2.ScrollExtensions.ScrollDirection.Horizontal) {
-                if (rect.width < MIN_SIZE) {
-                    rect.width = MIN_SIZE;
+                if (rect.width < MIN_ITEM_SIZE) {
+                    rect.width = MIN_ITEM_SIZE;
                     rect.right = rect.left + rect.width;
                 }
             }
             else {
-                if (rect.height < MIN_SIZE) {
-                    rect.height = MIN_SIZE;
+                if (rect.height < MIN_ITEM_SIZE) {
+                    rect.height = MIN_ITEM_SIZE;
                     rect.bottom = rect.top + rect.height;
                 }
             }
@@ -621,7 +635,7 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             var secondElement = items[items.length - 1];
             var firstElementBounds = firstElement.getBoundingClientRect();
             var secondElementBounds = secondElement.getBoundingClientRect();
-            return this.getDimension(secondElementBounds.top, 0) >= this.getDimension(firstElementBounds.bottom, 1);
+            return Math.floor(this.getDimension(secondElementBounds.top, 0)) >= Math.floor(this.getDimension(firstElementBounds.bottom, 1));
         };
         VirtualizedScrollViewer.prototype.calculateItemsSize = function (items, firstItemIndex, lastItemIndex) {
             if (firstItemIndex === void 0) { firstItemIndex = 0; }
@@ -655,9 +669,12 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             }
             return { size: itemsSize, count: i };
         };
-        VirtualizedScrollViewer.prototype.getCurrentScrollViewerState = function (listLength) {
+        VirtualizedScrollViewer.prototype.getCurrentScrollViewerState = function (listLength, returnSameStateOnSmallChanges) {
+            if (returnSameStateOnSmallChanges === void 0) { returnSameStateOnSmallChanges = false; }
             var scrollInfo = this.getScrollInfo();
-            if (Math.abs(scrollInfo.scrollOffset - this.state.effectiveScrollOffset) < 100) {
+            var pageBufferSize = (this.props.pageBufferSize || DEFAULT_BUFFER_SIZE) * BUFFER_MULTIPLIER;
+            var viewportSafetyMargin = scrollInfo.viewportSize * (pageBufferSize / 2);
+            if (returnSameStateOnSmallChanges && Math.abs(scrollInfo.scrollOffset - this.state.effectiveScrollOffset) < (viewportSafetyMargin * 0.5)) {
                 return this.state;
             }
             var items = this.getListItems(this.itemsContainer);
@@ -671,6 +688,10 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                     effectiveScrollOffset: scrollInfo.scrollOffset
                 };
             }
+            var lastSpacerBounds = this.itemsContainer.lastElementChild.getBoundingClientRect();
+            if (this.getDimension(lastSpacerBounds.bottom, lastSpacerBounds.right) < -100) {
+                return this.state;
+            }
             var renderedItemsSizes = this.calculateItemsSize(items);
             var offScreenItemsCount = this.state.offScreenItemsCount;
             var onScreenItems = renderedItemsSizes.sizes.slice(offScreenItemsCount);
@@ -679,16 +700,14 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             if (this.state.averageItemSize !== 0) {
                 averageItemSize = (0.8 * this.state.averageItemSize) + (0.2 * averageItemSize);
             }
-            var pageBufferSize = (this.props.pageBufferSize || DEFAULT_BUFFER_SIZE) * BUFFER_MULTIPLIER;
-            var viewportSafetyMargin = scrollInfo.viewportSize * (pageBufferSize / 2);
             var itemsFittingViewportCount = Math.ceil(scrollInfo.viewportSize / averageItemSize);
-            var maxOffScreenItemsCount = Math.ceil(scrollInfo.viewportSize * 1.5 / averageItemSize);
-            var safetyItemsCount = Math.ceil(viewportSafetyMargin * 2) / averageItemSize;
-            var renderedItemsCount = itemsFittingViewportCount + safetyItemsCount + maxOffScreenItemsCount;
+            var maxOffScreenItemsCount = itemsFittingViewportCount;
+            var safetyItemsCount = Math.ceil(viewportSafetyMargin * 2 / averageItemSize);
+            var renderedItemsCount = Math.min(listLength, itemsFittingViewportCount + safetyItemsCount + maxOffScreenItemsCount);
             var scrollOffset = this.state.scrollOffset;
             var firstRenderedItemIndex = this.state.firstRenderedItemIndex;
             var viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMargin;
-            var firstSpacerBounds = this.itemsContainer.children[0].getBoundingClientRect();
+            var firstSpacerBounds = this.itemsContainer.firstElementChild.getBoundingClientRect();
             var firstItemOffset = this.getDimension(firstSpacerBounds.bottom, firstSpacerBounds.right);
             if (Math.abs(firstItemOffset - viewportLowerMargin) <= onScreenItemsSize) {
                 if (firstItemOffset < viewportLowerMargin) {
@@ -740,6 +759,7 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 if (firstRenderedItemIndex > 0) {
                     firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - Math.ceil(viewportSafetyMargin / averageItemSize));
                 }
+                firstRenderedItemIndex = Math.max(0, Math.min(firstRenderedItemIndex, listLength - 1 - renderedItemsCount));
                 scrollOffset = firstRenderedItemIndex * averageItemSize;
             }
             if (firstRenderedItemIndex === 0 && offScreenItemsCount === 0) {
@@ -856,7 +876,7 @@ define("index", ["require", "exports", "react", "react-dom", "virtualized-list",
         function App() {
             _super.call(this);
             this.state = {
-                items: 100,
+                items: 20,
                 pageBufferSize: 4
             };
         }
@@ -876,7 +896,7 @@ define("index", ["require", "exports", "react", "react-dom", "virtualized-list",
             for (var i = 0; i < this.state.items; i++) {
                 list.push({ image: images_1.Images[i % imagesCount], index: i });
             }
-            return (React.createElement("div", null, React.createElement("h1", null, "Virtualized list example"), React.createElement("br", null), React.createElement("input", {ref: "itemsCount", placeholder: "Number of items", defaultValue: this.state.items + ""}), React.createElement("button", {onClick: this.refresh.bind(this)}, "Set Items"), React.createElement("br", null), React.createElement("br", null), React.createElement("input", {ref: "pageBufferSize", placeholder: "Number extra invisible of items rendered", defaultValue: this.state.pageBufferSize + ""}), React.createElement("button", {onClick: this.refresh.bind(this)}, "Set Buffer Size"), React.createElement("br", null), React.createElement("br", null), React.createElement("input", {ref: "scrollOffset", placeholder: "Scroll offset", defaultValue: this.state.items + ""}), React.createElement("button", {onClick: this.setScroll.bind(this)}, "Set Scroll"), React.createElement("br", null), React.createElement("br", null), React.createElement(virtualized_list_1.VirtualizedList, {ref: "list", list: list, pageBufferSize: this.state.pageBufferSize})));
+            return (React.createElement("div", null, React.createElement("h1", null, "Virtualized list example"), React.createElement("br", null), React.createElement("input", {ref: "itemsCount", placeholder: "Number of items", defaultValue: this.state.items + ""}), React.createElement("button", {onClick: this.refresh.bind(this)}, "Set Items"), React.createElement("br", null), React.createElement("br", null), React.createElement("input", {ref: "pageBufferSize", placeholder: "Number extra invisible of items rendered", defaultValue: this.state.pageBufferSize + ""}), React.createElement("button", {onClick: this.refresh.bind(this)}, "Set Buffer Size"), React.createElement("br", null), React.createElement("br", null), React.createElement("input", {ref: "scrollOffset", placeholder: "Scroll offset", defaultValue: this.state.items + ""}), React.createElement("button", {onClick: this.setScroll.bind(this)}, "Set Scroll"), React.createElement("br", null), React.createElement("br", null), React.createElement(virtualized_list_1.VirtualizedList, {ref: "list", list: list, pageBufferSize: this.state.pageBufferSize}), React.createElement("div", {style: { height: "3000px", backgroundImage: "url(http://www.intrawallpaper.com/static/images/cube-pattern-28617-2560x1600.jpg)" }})));
         };
         return App;
     }(React.Component));

@@ -11,7 +11,8 @@ const RESIZE_EVENT_NAME = "resize";
 const PIXEL_UNITS = "px";
 const FLEXBOX_DISPLAY = document.createElement("p").style.flex === undefined ? "-webkit-flex" : "flex"; // support ios under 9
 const DEFAULT_BUFFER_SIZE = 3; // default number of extra viewports to render
-const BUFFER_MULTIPLIER = insideiOSWebView() ? 4 : 1; // inside iOS webview use 4x the buffer size (due to scrolling limitations) 
+const BUFFER_MULTIPLIER = insideiOSWebView() ? 4 : 1; // inside iOS webview use 4x the buffer size (due to scrolling limitations)
+const MIN_ITEM_SIZE = 20; // minimum items size (because when items are animating height/width we might get very small values) 
 
 export interface IScrollViewerProperties extends React.Props<VirtualizedScrollViewer> {
     length: number;
@@ -59,7 +60,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     private isScrollOngoing: boolean = false; // true when rendering to due scroll changes
     private isComponentInitialized: boolean = false;
     private setPendingScroll: () => void;
-    
+
     constructor(props: IScrollViewerProperties, context: any) {
         super(props, context);
         this.scrollHandler = this.handleScroll.bind(this);
@@ -137,14 +138,18 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
 
         let onWindowScroll = () => { 
             window.removeEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
+            window.removeEventListener(RESIZE_EVENT_NAME, onWindowScroll, true);
             this.addScrollHandler();
         };
 
         requestAnimationFrame(() => {
-            // loading css might take some time, that's why we wait for user interaction 
-            // (hoping that he acts after things are ready)
-            // and defer scroll listener events attach until a scroll event is fired
-            window.addEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
+            if (!this.isDisposed) {
+                // loading css might take some time, that's why we wait for user interaction 
+                // (hoping that he acts after things are ready)
+                // and defer attaching of scroll listener events  until a scroll event is fired
+                window.addEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
+                window.addEventListener(RESIZE_EVENT_NAME, onWindowScroll, true);
+            }
         });
 
         // rerender with the right amount of items in the viewport
@@ -182,8 +187,13 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         this.renderOffScreenBuffer();
         
         if (this.setPendingScroll) {
-            this.setPendingScroll();
-            this.setPendingScroll = null;
+            requestAnimationFrame(() => {
+                // execute inside raf to make sure scroll events are already attached 
+                if (!this.isDisposed) {
+                    this.setPendingScroll();
+                    this.setPendingScroll = null;
+                }
+            });
         }
 
         if (!this.isComponentInitialized) {
@@ -269,7 +279,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         
         let remainingSize = 0;
         if (lastRenderedItemIndex < (this.props.length - 1)) {
-            let averageItemSize = this.state.averageItemSize;
+            let averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);
             let scrollSize = averageItemSize * this.props.length;
             // give remaining space at the end if end of list as not been reached
             remainingSize = scrollSize - ((averageItemSize * length) + scrollOffset);
@@ -325,7 +335,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     }
     
     private getItemBounds(item: Element): Rect {
-        const MIN_SIZE = 20; // minimum items size (because when items are animating height/width we might get very small values)
         let bounds = item.getBoundingClientRect();
         let rect: Rect = {
             width: bounds.width,
@@ -336,13 +345,13 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             bottom: bounds.bottom,
         };
         if (this.scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
-            if (rect.width < MIN_SIZE) {
-                rect.width = MIN_SIZE;
+            if (rect.width < MIN_ITEM_SIZE) {
+                rect.width = MIN_ITEM_SIZE;
                 rect.right = rect.left + rect.width;
             }
         } else {
-            if (rect.height < MIN_SIZE) {
-                rect.height = MIN_SIZE;
+            if (rect.height < MIN_ITEM_SIZE) {
+                rect.height = MIN_ITEM_SIZE;
                 rect.bottom = rect.top + rect.height;
             }
         }
@@ -366,7 +375,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let secondElementBounds = secondElement.getBoundingClientRect();
 
         // elements stacked vertically; horizontal stacking not supported yet
-        return this.getDimension(secondElementBounds.top, 0) >= this.getDimension(firstElementBounds.bottom, 1); 
+        return Math.floor(this.getDimension(secondElementBounds.top, 0)) >= Math.floor(this.getDimension(firstElementBounds.bottom, 1)); 
     }
     
     /**
