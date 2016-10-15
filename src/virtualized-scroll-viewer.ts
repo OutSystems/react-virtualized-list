@@ -60,6 +60,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     private isScrollOngoing: boolean = false; // true when rendering to due scroll changes
     private isComponentInitialized: boolean = false;
     private setPendingScroll: () => void;
+    private itemsPlaceholdersImageDataUri: string;
 
     constructor(props: IScrollViewerProperties, context: any) {
         super(props, context);
@@ -70,7 +71,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             averageItemSize: 0,
             scrollOffset: 0,
             offScreenItemsCount: 0,
-            effectiveScrollOffset: Number.MIN_VALUE
+            effectiveScrollOffset: Number.MIN_VALUE,
         };
     }
 
@@ -166,6 +167,13 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     public componentWillReceiveProps(nextProps: IScrollViewerProperties): void {
         this.setState(this.getCurrentScrollViewerState(nextProps.length)); // rerender with the right amount of items in the viewport
         this.hasPendingPropertiesUpdate = true;
+    }
+
+    public componentWillUpdate(nextProps: IScrollViewerProperties, nextState: IScrollViewerState): void {
+        if (Math.abs(nextState.averageItemSize - this.state.averageItemSize) > 30) {
+            // if item size changed substantially, invalidate items placeholders image
+            this.itemsPlaceholdersImageDataUri = null;
+        }
     }
     
     public setState(state: IScrollViewerState | ((prevState: IScrollViewerState, props: IScrollViewerProperties) => IScrollViewerState), 
@@ -278,17 +286,17 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let items = this.props.renderItems(firstRenderedItemIndex, length);
         
         let remainingSize = 0;
+        let averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);
         if (lastRenderedItemIndex < (this.props.length - 1)) {
-            let averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);
             let scrollSize = averageItemSize * this.props.length;
             // give remaining space at the end if end of list as not been reached
             remainingSize = scrollSize - ((averageItemSize * length) + scrollOffset);
         }
         
         let listChildren: any = [];
-        listChildren.push(this.renderSpacer("first-spacer", scrollOffset)); // compensate scroll offset
+        listChildren.push(this.renderSpacer("first-spacer", scrollOffset, averageItemSize)); // compensate scroll offset
         listChildren.push(items);
-        listChildren.push(this.renderSpacer("last-spacer", remainingSize)); // compensate scroll height/width
+        listChildren.push(this.renderSpacer("last-spacer", remainingSize, averageItemSize)); // compensate scroll height/width
         
         return this.props.renderWrapper(listChildren);
     }
@@ -296,18 +304,26 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     /**
      * Render a spacer element used to give blank space at the beginning or end of the list
      */
-    private renderSpacer(key: string, dimension: number): JSX.Element {
+    private renderSpacer(key: string, dimension: number, averageItemSize: number): JSX.Element {
         const FILL_SPACE = "100%";
         let style: React.CSSProperties = {
             display: FLEXBOX_DISPLAY,
         };
+        let backgroundWidth = 0;
+        let backgroundHeight = 0;
         if (this.scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
             style.width = Math.round(dimension) + PIXEL_UNITS;
             style.height = FILL_SPACE;
+            backgroundWidth = averageItemSize;
         } else {
             style.width = FILL_SPACE;
             style.height = Math.round(dimension) + PIXEL_UNITS;
+            backgroundHeight = averageItemSize;
         }
+        // fill space with list items stripes for improved user experience (when scrolling fast)
+        style.backgroundImage = `url(${this.getItemsPlaceholdersImage(backgroundWidth, backgroundHeight)})`;
+        style.backgroundRepeat = "repeat";
+        
         return React.DOM.script({ key: key, style: style });
     }
     
@@ -432,7 +448,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let scrollInfo = this.getScrollInfo();
         let pageBufferSize = (this.props.pageBufferSize || DEFAULT_BUFFER_SIZE) * BUFFER_MULTIPLIER;
         let viewportSafetyMargin = scrollInfo.viewportSize * (pageBufferSize / 2); // extra safety space for some more items
-        if (returnSameStateOnSmallChanges && Math.abs(scrollInfo.scrollOffset - this.state.effectiveScrollOffset) < (viewportSafetyMargin * 0.5)) {
+        if (returnSameStateOnSmallChanges && 
+            Math.abs(scrollInfo.scrollOffset - this.state.effectiveScrollOffset) < (viewportSafetyMargin * 0.5)) {
             // scroll changes are small, skip computations ahead
             return this.state;
         }
@@ -447,7 +464,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 averageItemSize: 0,
                 scrollOffset: 0,
                 offScreenItemsCount: 0,
-                effectiveScrollOffset: scrollInfo.scrollOffset
+                effectiveScrollOffset: scrollInfo.scrollOffset,
             };
         }
         
@@ -571,7 +588,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             averageItemSize: averageItemSize,
             scrollOffset: scrollOffset,
             offScreenItemsCount: offScreenItemsCount,
-            effectiveScrollOffset: scrollInfo.scrollOffset
+            effectiveScrollOffset: scrollInfo.scrollOffset,
         };
     }
     
@@ -599,5 +616,27 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             // not all items rendered yet, schedule scroll updates for later
             this.setPendingScroll = updateScroll;
         }
+    }
+
+    private getItemsPlaceholdersImage(width: number, height: number): string {
+        if (!this.itemsPlaceholdersImageDataUri) {
+            // cache list items placeholders image for improved performance
+            this.itemsPlaceholdersImageDataUri = this.drawItemsPlaceholders(width, height);
+        }
+        return this.itemsPlaceholdersImageDataUri;
+    }
+
+    private drawItemsPlaceholders(width: number, height: number): string {
+        let minWidth = Math.max(width, 1);
+        let minHeight = Math.max(height, 1);
+        let canvas = document.createElement("canvas");
+        canvas.width = Math.max(width * 2, 1);
+        canvas.height = Math.max(height * 2, 1);
+        let ctx = canvas.getContext("2d");
+        ctx.fillStyle = "rgba(0, 0, 0, 0.04)";
+        ctx.fillRect(0, 0, minWidth, minHeight);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
+        ctx.fillRect(width, height, minWidth, minHeight);
+        return canvas.toDataURL();
     }
 }
