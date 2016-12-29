@@ -12,7 +12,7 @@ const PIXEL_UNITS = "px";
 const FLEXBOX_DISPLAY = document.createElement("p").style.flex === undefined ? "-webkit-flex" : "flex"; // support ios under 9
 const DEFAULT_BUFFER_SIZE = 3; // default number of extra viewports to render
 const BUFFER_MULTIPLIER = insideiOSWebView() ? 4 : 1; // inside iOS webview use 4x the buffer size (due to scrolling limitations)
-const MIN_ITEM_SIZE = 20; // minimum items size (because when items are animating height/width we might get very small values) 
+const MIN_ITEM_SIZE = 10; // minimum items size (because when items are animating height/width we might get very small values) 
 
 export interface IScrollViewerProperties extends React.Props<VirtualizedScrollViewer> {
     length: number;
@@ -604,17 +604,33 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         return !this.itemsContainer;
     }
     
-    public setScrollOffset(x: number, y: number): void {
-        let scrollInfo = this.getScrollInfo();
-        let scrollHost = scrollInfo.scrollHost;
-        let scrollX = this.getDimension(undefined, x);
-        let scrollY = this.getDimension(y, undefined);
-        let updateScroll = () => { ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY); };
+    public scrollToIndex(index: number): void {
+        this.internalSetScrollOffset(() => {
+            let scrollInfo = this.getScrollInfo();
+            let scrollHost = scrollInfo.scrollHost;
+            let scrollOffset = this.state.averageItemSize * index;
+            let scrollX = this.getDimension(undefined, scrollOffset);
+            let scrollY = this.getDimension(scrollOffset, undefined);
+            ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY); 
+        });
+    }
+
+    public scrollToOffset(x: number, y: number): void {
+        this.internalSetScrollOffset(() => {
+            let scrollInfo = this.getScrollInfo();
+            let scrollHost = scrollInfo.scrollHost;
+            let scrollX = this.getDimension(undefined, x);
+            let scrollY = this.getDimension(y, undefined);
+            ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY); 
+        });
+    }
+
+    private internalSetScrollOffset(setScroll: () => void): void {
         if (this.isInitialized) {
-            updateScroll();
+            setScroll();
         } else {
             // not all items rendered yet, schedule scroll updates for later
-            this.setPendingScroll = updateScroll;
+            this.setPendingScroll = setScroll;
         }
     }
 

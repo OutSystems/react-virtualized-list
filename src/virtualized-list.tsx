@@ -24,7 +24,7 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
     }
     
     public componentDidMount() {
-        this.getScrollViewer().setScrollOffset(0, 1000);
+        this.getScrollViewer().scrollToOffset(0, 1000);
     }
     
     private renderItems(startIndex: number, length: number) {
@@ -64,7 +64,11 @@ export class VirtualizedList extends React.Component<IVirtualizedListProperties,
         );
     }
     
-    public setScrollOffset(offset: number): void {
-        this.getScrollViewer().setScrollOffset(undefined, offset);
+    public scrollToOffset(offset: number): void {
+        this.getScrollViewer().scrollToOffset(undefined, offset);
+    }
+
+    public scrollToIndex(index: number): void {
+        this.getScrollViewer().scrollToIndex(index);
     }
 }

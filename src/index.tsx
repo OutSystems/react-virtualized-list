@@ -22,7 +22,12 @@ class App extends React.Component<{}, { items: number, pageBufferSize: number }>
     
     private setScroll() {
         let offset = parseInt( (this.refs["scrollOffset"] as HTMLInputElement).value);
-        (this.refs["list"] as VirtualizedList).setScrollOffset(offset);
+        (this.refs["list"] as VirtualizedList).scrollToOffset(offset);
+    }
+
+    private scrollToIndex() {
+        let offset = parseInt( (this.refs["scrollToIndex"] as HTMLInputElement).value);
+        (this.refs["list"] as VirtualizedList).scrollToIndex(offset);
     }
     
     public render() {
@@ -43,8 +48,12 @@ class App extends React.Component<{}, { items: number, pageBufferSize: number }>
                 <button onClick={this.refresh.bind(this)}>Set Buffer Size</button>
                 <br/>
                 <br/>
-                <input ref="scrollOffset" placeholder="Scroll offset" defaultValue={this.state.items + ""} />
+                <input ref="scrollOffset" placeholder="Scroll offset" />
                 <button onClick={this.setScroll.bind(this)}>Set Scroll</button>
+                <br/>
+                <br/>
+                <input ref="scrollToIndex" placeholder="Scroll to index" />
+                <button onClick={this.scrollToIndex.bind(this)}>Scroll to index</button>
                 <br/>
                 <br/>
                 <VirtualizedList ref="list" list={list} pageBufferSize={this.state.pageBufferSize}/>
