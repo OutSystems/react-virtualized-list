@@ -608,10 +608,32 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         this.internalSetScrollOffset(() => {
             let scrollInfo = this.getScrollInfo();
             let scrollHost = scrollInfo.scrollHost;
+            
             let scrollOffset = this.state.averageItemSize * index;
+            let firstVisibleItemOffset = scrollInfo.scrollOffset;
+            let needsScroll = false;
+
+            if (scrollOffset < firstVisibleItemOffset) {
+                // target is before first visible
+                needsScroll = true;
+            } else {
+                let lastVisibleItemOffset = firstVisibleItemOffset + scrollInfo.viewportSize - this.state.averageItemSize;
+                if (scrollOffset > lastVisibleItemOffset) {
+                    // target is after last visible
+                    scrollOffset = scrollOffset - (lastVisibleItemOffset - firstVisibleItemOffset);
+                    needsScroll = true;
+                }
+            }
+
+            if (!needsScroll) {
+                // target is visible, don't scroll
+                return;
+            }
+
             let scrollX = this.getDimension(undefined, scrollOffset);
             let scrollY = this.getDimension(scrollOffset, undefined);
-            ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY); 
+
+            ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY, false); 
         });
     }
 
