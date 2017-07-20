@@ -197,7 +197,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         if (this.setPendingScroll) {
             requestAnimationFrame(() => {
                 // execute inside raf to make sure scroll events are already attached 
-                if (!this.isDisposed) {
+                if (!this.isDisposed && this.setPendingScroll) {
                     this.setPendingScroll();
                     this.setPendingScroll = null;
                 }
