@@ -51,7 +51,6 @@ type Rect = {
 
 export class VirtualizedScrollViewer extends React.Component<IScrollViewerProperties, IScrollViewerState> {
     
-    private scrollHandler: () => void;
     private scrollHostInfo: ScrollExtensions.IScrollHostInfo;
     private scrollDirection: ScrollExtensions.ScrollDirection = ScrollExtensions.ScrollDirection.Vertical;
     private hasPendingPropertiesUpdate: boolean = false;
@@ -64,7 +63,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
 
     constructor(props: IScrollViewerProperties, context: any) {
         super(props, context);
-        this.scrollHandler = this.handleScroll.bind(this);
         this.state = {
             firstRenderedItemIndex: 0,
             lastRenderedItemIndex: 1,
@@ -123,33 +121,37 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         this.scrollHostInfo = null; // clear previously cached scroll host info (might be wrong)
         let scrollHostInfo = this.getScrollHostInfo();
         let scrollHost = scrollHostInfo.scrollHost;
-        scrollHost.addEventListener(SCROLL_EVENT_NAME, this.scrollHandler);
-        scrollHost.addEventListener(RESIZE_EVENT_NAME, this.scrollHandler);
+        scrollHost.addEventListener(SCROLL_EVENT_NAME, this.onScroll);
+        window.addEventListener(RESIZE_EVENT_NAME, this.onScroll);
         this.scrollDirection = scrollHostInfo.scrollDirection; // won't be updated later if changes (case not supported now)
     }
     
     private removeScrollHandler(): void {
         let scrollHost = this.getScrollHostInfo().scrollHost;
-        scrollHost.removeEventListener(SCROLL_EVENT_NAME, this.scrollHandler);
-        scrollHost.removeEventListener(RESIZE_EVENT_NAME, this.scrollHandler);
+        scrollHost.removeEventListener(SCROLL_EVENT_NAME, this.onScroll);
+        window.removeEventListener(RESIZE_EVENT_NAME, this.onScroll);
+    }
+
+    private onWindowScrollOrResize = (): void => {
+        this.removeWindowScrollHandlers();
+        this.addScrollHandler();
+    }
+
+    private removeWindowScrollHandlers() {
+        window.removeEventListener(SCROLL_EVENT_NAME, this.onWindowScrollOrResize, true);
+        window.removeEventListener(RESIZE_EVENT_NAME, this.onWindowScrollOrResize, true);
     }
     
     public componentDidMount(): void {
         this.itemsContainer = ReactDOM.findDOMNode(this) as HTMLElement;
-
-        let onWindowScroll = () => { 
-            window.removeEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
-            window.removeEventListener(RESIZE_EVENT_NAME, onWindowScroll, true);
-            this.addScrollHandler();
-        };
 
         requestAnimationFrame(() => {
             if (!this.isDisposed) {
                 // loading css might take some time, that's why we wait for user interaction 
                 // (hoping that he acts after things are ready)
                 // and defer attaching of scroll listener events  until a scroll event is fired
-                window.addEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
-                window.addEventListener(RESIZE_EVENT_NAME, onWindowScroll, true);
+                window.addEventListener(SCROLL_EVENT_NAME, this.onWindowScrollOrResize, true);
+                window.addEventListener(RESIZE_EVENT_NAME, this.onWindowScrollOrResize, true);
             }
         });
 
@@ -159,6 +161,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     }
     
     public componentWillUnmount(): void {
+        this.removeWindowScrollHandlers();
         this.removeScrollHandler();
         this.scrollHostInfo = null;
         this.itemsContainer = null;
@@ -242,7 +245,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         }
     }
 
-    private handleScroll(scrollEvent: UIEvent): void {
+    private onScroll = (scrollEvent: UIEvent): void => {
         if (this.pendingScrollAsyncUpdateHandle) {
             return; // an update already queued, skip
         }
@@ -254,7 +257,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             }
             
             try {
-                let newState = this.getCurrentScrollViewerState(this.props.length, true);
+                // return same state when doing small scroll changes (resizing case not optimized)
+                let newState = this.getCurrentScrollViewerState(this.props.length, scrollEvent.type !== RESIZE_EVENT_NAME);
                 
                 if (newState !== this.state) {
                     this.isScrollOngoing = true;
