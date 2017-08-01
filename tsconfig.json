@@ -6,8 +6,13 @@
         "preserveConstEnums": true,
         "sourceMap": false,
         "outFile": "bin/index.js",
-		"target": "es5",
-		"jsx": "react",
+        "target": "es5",
+        "jsx": "react",
         "experimentalDecorators": true
-    }
+    },
+    "exclude": [
+        "src/images.ts",
+        "src/index.tsx",
+        "src/virtualized-list.tsx"
+    ]
 }
