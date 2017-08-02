@@ -294,7 +294,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         if (lastRenderedItemIndex < (this.props.length - 1)) {
             let scrollSize = averageItemSize * this.props.length;
             // give remaining space at the end if end of list as not been reached
-            remainingSize = scrollSize - ((averageItemSize * length) + scrollOffset);
+            remainingSize = scrollSize - ((averageItemSize * (length - this.state.offScreenItemsCount)) + scrollOffset);
         }
         
         let listChildren: any = [];
