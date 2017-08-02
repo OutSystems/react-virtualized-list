@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { ScrollExtensions } from "virtualized-scroll-viewer-extensions";
+import { Spacer } from "./spacer";
 
 function insideiOSWebView(): boolean {
     return !(navigator as any).standalone && /(iPad)|(iPhone)/i.test(navigator.userAgent) && !/safari/i.test(navigator.userAgent);    
@@ -9,7 +10,6 @@ function insideiOSWebView(): boolean {
 const SCROLL_EVENT_NAME = "scroll";
 const RESIZE_EVENT_NAME = "resize";
 const PIXEL_UNITS = "px";
-const FLEXBOX_DISPLAY = document.createElement("p").style.flex === undefined ? "-webkit-flex" : "flex"; // support ios under 9
 const DEFAULT_BUFFER_SIZE = 3; // default number of extra viewports to render
 const BUFFER_MULTIPLIER = insideiOSWebView() ? 4 : 1; // inside iOS webview use 4x the buffer size (due to scrolling limitations)
 const MIN_ITEM_SIZE = 10; // minimum items size (because when items are animating height/width we might get very small values) 
@@ -309,26 +309,10 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Render a spacer element used to give blank space at the beginning or end of the list
      */
     private renderSpacer(key: string, dimension: number, averageItemSize: number): JSX.Element {
-        const FILL_SPACE = "100%";
-        let style: React.CSSProperties = {
-            display: FLEXBOX_DISPLAY,
-        };
-        let backgroundWidth = 0;
-        let backgroundHeight = 0;
-        if (this.scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
-            style.width = Math.round(dimension) + PIXEL_UNITS;
-            style.height = FILL_SPACE;
-            backgroundWidth = averageItemSize;
-        } else {
-            style.width = FILL_SPACE;
-            style.height = Math.round(dimension) + PIXEL_UNITS;
-            backgroundHeight = averageItemSize;
-        }
-        // fill space with list items stripes for improved user experience (when scrolling fast)
-        style.backgroundImage = `url(${this.getItemsPlaceholdersImage(backgroundWidth, backgroundHeight)})`;
-        style.backgroundRepeat = "repeat";
-        
-        return React.DOM.script({ key: key, style: style });
+        return <Spacer key={key}
+                    dimension={dimension}
+                    averageItemSize={averageItemSize}
+                    scrollDirection={this.scrollDirection} />;
     }
     
     public render(): JSX.Element {
