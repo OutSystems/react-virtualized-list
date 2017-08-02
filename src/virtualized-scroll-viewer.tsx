@@ -3,7 +3,7 @@ import * as ReactDOM from "react-dom";
 import { ScrollExtensions } from "virtualized-scroll-viewer-extensions";
 
 function insideiOSWebView(): boolean {
-    return !(<any> navigator).standalone && /(iPad)|(iPhone)/i.test(navigator.userAgent) && !/safari/i.test(navigator.userAgent);    
+    return !(navigator as any).standalone && /(iPad)|(iPhone)/i.test(navigator.userAgent) && !/safari/i.test(navigator.userAgent);    
 }
 
 const SCROLL_EVENT_NAME = "scroll";
@@ -183,7 +183,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                     callback?: () => any): void {
         // using set state callback instead of componentDidUpdate because when using transition group
         // removed nodes will still be present when component did update is called
-        super.setState(<any> state, () => {
+        super.setState(state as any, () => {
             this.onDidUpdate();
             if (callback) {
                 callback();
@@ -229,7 +229,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         this.itemsContainer.style.position = "relative";
         let items = this.getListItems(this.itemsContainer);
         for (let item of items.slice(0, this.state.offScreenItemsCount)) {
-            let child = <HTMLElement> item;
+            let child = item as HTMLElement;
             if (child.style !== undefined) {
                 // move element offscreen
                 child.style.position = "absolute";
@@ -237,7 +237,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             }
         }
         for (let item of items.slice(this.state.offScreenItemsCount)) {
-            let child = <HTMLElement> item;
+            let child = item as HTMLElement;
             if (child.style !== undefined) {
                 child.style.position = "";
                 child.style.top = "";
