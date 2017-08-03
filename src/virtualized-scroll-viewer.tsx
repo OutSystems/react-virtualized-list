@@ -470,11 +470,16 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let scrollInfo = this.getScrollInfo();
         let pageBufferSize = (this.props.pageBufferSize || DEFAULT_BUFFER_SIZE) * BUFFER_MULTIPLIER;
         let viewportSafetyMargin = scrollInfo.viewportSize * (pageBufferSize / 2); // extra safety space for some more items
+        let forceRecalculate = false;
         // if (returnSameStateOnSmallChanges && 
         //     Math.abs(scrollInfo.scrollOffset - this.state.effectiveScrollOffset) < (viewportSafetyMargin * 0.5)) {
         //     // scroll changes are small, skip computations ahead
         //     return this.state;
         // }
+
+        if (scrollInfo.scrollOffset < (viewportSafetyMargin / 4) && (this.state.firstRenderedItemIndex > 0 || this.state.offScreenItemsCount > 0)) {
+            forceRecalculate = true;
+        }
 
         let items = this.getListItems(this.itemsContainer);
 
@@ -526,7 +531,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let firstSpacerBounds = this.itemsContainer.firstElementChild.getBoundingClientRect();
         let firstItemOffset = this.getDimension(firstSpacerBounds.bottom, firstSpacerBounds.right);
                     
-        if (Math.abs(firstItemOffset - viewportLowerMargin) <= onScreenItemsSize) {
+        if (!forceRecalculate && Math.abs(firstItemOffset - viewportLowerMargin) <= onScreenItemsSize) {
             if (firstItemOffset < viewportLowerMargin) {
                 // find the onscreen items that will go offscreen
                 let itemsGoingOffScreen = this.countItemsAndSizeThatFitIn(onScreenItems, Math.abs(viewportLowerMargin - firstItemOffset));
