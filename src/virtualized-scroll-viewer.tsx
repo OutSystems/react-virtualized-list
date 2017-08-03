@@ -49,6 +49,18 @@ type Rect = {
     right: number,
 };
 
+class StartOffscreen extends React.Component<React.Props<{}>, {}> {
+    render() {
+        return this.props.children as JSX.Element;
+    }
+    componentDidMount() {
+        var self = ReactDOM.findDOMNode(this) as HTMLElement;
+        self.style.position = "absolute";
+        self.style.top = "-10000" + PIXEL_UNITS;
+        self.style.width = "100%";
+    }
+}
+
 export class VirtualizedScrollViewer extends React.Component<IScrollViewerProperties, IScrollViewerState> {
     
     private scrollHostInfo: ScrollExtensions.IScrollHostInfo;
@@ -227,17 +239,29 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      */
     private renderOffScreenBuffer() {
         this.itemsContainer.style.position = "relative";
-        let items = this.getListItems(this.itemsContainer);
-        for (let item of items.slice(0, this.state.offScreenItemsCount)) {
-            let child = item as HTMLElement;
+        
+        let items = this.itemsContainer.children;
+        let itemsCount = this.itemsContainer.childElementCount;
+        
+        let topPad = items.item(0) as HTMLElement;
+        let bottomPad = items.item(itemsCount - 1) as HTMLElement;
+
+        // TODO: mmv: always assuming vertical scroll
+        topPad.style.height = this.state.scrollOffset + PIXEL_UNITS;
+        bottomPad.style.height =
+            this.getRemainingSize(this.state.firstRenderedItemIndex, this.state.lastRenderedItemIndex)
+            + PIXEL_UNITS;
+
+        for (var i = 1; i < this.state.offScreenItemsCount + 1; i++) {
+            let child = items.item(i) as HTMLElement;
             if (child.style !== undefined) {
                 // move element offscreen
                 child.style.position = "absolute";
                 child.style.top = "-10000" + PIXEL_UNITS;
             }
         }
-        for (let item of items.slice(this.state.offScreenItemsCount)) {
-            let child = item as HTMLElement;
+        for (var i = this.state.offScreenItemsCount + 1; i < itemsCount - 1; i++) {
+            let child = items.item(i) as HTMLElement;
             if (child.style !== undefined) {
                 child.style.position = "";
                 child.style.top = "";
@@ -281,21 +305,31 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                nextState.scrollOffset !== this.state.scrollOffset ||
                nextProps !== this.props;
     }
-    
-    private renderList(firstRenderedItemIndex: number, lastRenderedItemIndex: number): JSX.Element {
-        let scrollOffset = this.state.scrollOffset;
+
+    private getRemainingSize(firstRenderedItemIndex: number, lastRenderedItemIndex: number): number {
         let length = Math.min(this.props.length, lastRenderedItemIndex - firstRenderedItemIndex + 1);
-        
-        // render only visible items
-        let items = this.props.renderItems(firstRenderedItemIndex, length);
-        
+
         let remainingSize = 0;
         let averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);
         if (lastRenderedItemIndex < (this.props.length - 1)) {
             let scrollSize = averageItemSize * this.props.length;
             // give remaining space at the end if end of list as not been reached
-            remainingSize = scrollSize - ((averageItemSize * (length - this.state.offScreenItemsCount)) + scrollOffset);
+            remainingSize = scrollSize - ((averageItemSize * (length - this.state.offScreenItemsCount)) + this.state.scrollOffset);
         }
+        return remainingSize;
+        }
+        
+    private renderList(firstRenderedItemIndex: number, lastRenderedItemIndex: number): JSX.Element {
+        let length = Math.min(this.props.length, lastRenderedItemIndex - firstRenderedItemIndex + 1);
+        
+        let scrollOffset = this.state.scrollOffset;
+        let remainingSize = this.getRemainingSize(firstRenderedItemIndex, lastRenderedItemIndex);
+        // render only visible items
+        let items =
+            React.Children.map(
+                this.props.renderItems(firstRenderedItemIndex, length),
+                c => <StartOffscreen>{c}</StartOffscreen>);
+        let averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);        
         
         let listChildren: any = [];
         listChildren.push(this.renderSpacer("first-spacer", scrollOffset, averageItemSize)); // compensate scroll offset
@@ -436,11 +470,11 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let scrollInfo = this.getScrollInfo();
         let pageBufferSize = (this.props.pageBufferSize || DEFAULT_BUFFER_SIZE) * BUFFER_MULTIPLIER;
         let viewportSafetyMargin = scrollInfo.viewportSize * (pageBufferSize / 2); // extra safety space for some more items
-        if (returnSameStateOnSmallChanges && 
-            Math.abs(scrollInfo.scrollOffset - this.state.effectiveScrollOffset) < (viewportSafetyMargin * 0.5)) {
-            // scroll changes are small, skip computations ahead
-            return this.state;
-        }
+        // if (returnSameStateOnSmallChanges && 
+        //     Math.abs(scrollInfo.scrollOffset - this.state.effectiveScrollOffset) < (viewportSafetyMargin * 0.5)) {
+        //     // scroll changes are small, skip computations ahead
+        //     return this.state;
+        // }
 
         let items = this.getListItems(this.itemsContainer);
 

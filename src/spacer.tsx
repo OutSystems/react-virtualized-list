@@ -27,12 +27,12 @@ export class Spacer extends React.Component<SpacerProps, {}>{
         let { scrollDirection, dimension, averageItemSize, key } = this.props;
 
         if (scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
-            style.width = Math.round(dimension) + PIXEL_UNITS;
+            // style.width = Math.round(dimension) + PIXEL_UNITS;
             style.height = FILL_SPACE;
             backgroundWidth = averageItemSize;
         } else {
             style.width = FILL_SPACE;
-            style.height = Math.round(dimension) + PIXEL_UNITS;
+            // style.height = Math.round(dimension) + PIXEL_UNITS;
             backgroundHeight = averageItemSize;
         }
         // fill space with list items stripes for improved user experience (when scrolling fast)
