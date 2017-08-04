@@ -21,25 +21,17 @@ export class Spacer extends React.Component<SpacerProps, {}>{
         let style: React.CSSProperties = {
             display: FLEXBOX_DISPLAY,
         };
-        let backgroundWidth = 0;
-        let backgroundHeight = 0;
 
         let { scrollDirection, dimension, averageItemSize, childKey } = this.props;
 
         if (scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
-            // style.width = Math.round(dimension) + PIXEL_UNITS;
             style.height = FILL_SPACE;
-            backgroundWidth = averageItemSize;
         } else {
             style.width = FILL_SPACE;
-            // style.height = Math.round(dimension) + PIXEL_UNITS;
-            backgroundHeight = averageItemSize;
         }
-        // fill space with list items stripes for improved user experience (when scrolling fast)
-        // style.backgroundImage = `url(${this.getItemsPlaceholdersImage(backgroundWidth, backgroundHeight)})`;
-        style.backgroundColor = "#f0f";
-        style.backgroundRepeat = "repeat";
-
+        
+        // style.backgroundColor = "#f0f";
+        
         return React.DOM.script({ key: childKey, style: style });
     }
 }

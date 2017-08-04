@@ -59,7 +59,7 @@ class StartOffscreen extends React.Component<StartOffscreenProps, {}> {
     }
     componentDidMount() {
         if (!this.props.offscreen) return;
-        
+
         var self = ReactDOM.findDOMNode(this) as HTMLElement;
         self.style.position = "absolute";
         self.style.top = "-10000" + PIXEL_UNITS;
@@ -77,7 +77,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     private isScrollOngoing: boolean = false; // true when rendering to due scroll changes
     private isComponentInitialized: boolean = false;
     private setPendingScroll: () => void;
-    private itemsPlaceholdersImageDataUri: string;
 
     constructor(props: IScrollViewerProperties, context: any) {
         super(props, context);
@@ -190,13 +189,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         this.hasPendingPropertiesUpdate = true;
     }
 
-    public componentWillUpdate(nextProps: IScrollViewerProperties, nextState: IScrollViewerState): void {
-        if (Math.abs(nextState.averageItemSize - this.state.averageItemSize) > 30) {
-            // if item size changed substantially, invalidate items placeholders image
-            this.itemsPlaceholdersImageDataUri = null;
-        }
-    }
-    
     public setState(state: IScrollViewerState | ((prevState: IScrollViewerState, props: IScrollViewerProperties) => IScrollViewerState), 
                     callback?: () => any): void {
         // using set state callback instead of componentDidUpdate because when using transition group
@@ -695,27 +687,5 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             // not all items rendered yet, schedule scroll updates for later
             this.setPendingScroll = setScroll;
         }
-    }
-
-    private getItemsPlaceholdersImage(width: number, height: number): string {
-        if (!this.itemsPlaceholdersImageDataUri) {
-            // cache list items placeholders image for improved performance
-            this.itemsPlaceholdersImageDataUri = this.drawItemsPlaceholders(width, height);
-        }
-        return this.itemsPlaceholdersImageDataUri;
-    }
-
-    private drawItemsPlaceholders(width: number, height: number): string {
-        let minWidth = Math.max(width, 1);
-        let minHeight = Math.max(height, 1);
-        let canvas = document.createElement("canvas");
-        canvas.width = Math.max(width * 2, 1);
-        canvas.height = Math.max(height * 2, 1);
-        let ctx = canvas.getContext("2d");
-        ctx.fillStyle = "rgba(0, 0, 0, 0.04)";
-        ctx.fillRect(0, 0, minWidth, minHeight);
-        ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
-        ctx.fillRect(width, height, minWidth, minHeight);
-        return canvas.toDataURL();
     }
 }
