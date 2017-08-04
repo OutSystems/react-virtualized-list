@@ -680,6 +680,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         });
     }
 
+    public setScrollOffset = this.scrollToOffset;
+
     private internalSetScrollOffset(setScroll: () => void): void {
         if (this.isInitialized) {
             setScroll();
