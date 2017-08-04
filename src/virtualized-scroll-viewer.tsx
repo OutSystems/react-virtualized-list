@@ -49,11 +49,17 @@ type Rect = {
     right: number,
 };
 
-class StartOffscreen extends React.Component<React.Props<{}>, {}> {
+interface StartOffscreenProps extends React.Props<StartOffscreen> {
+    offscreen: boolean;
+}
+
+class StartOffscreen extends React.Component<StartOffscreenProps, {}> {
     render() {
         return this.props.children as JSX.Element;
     }
     componentDidMount() {
+        if (!this.props.offscreen) return;
+        
         var self = ReactDOM.findDOMNode(this) as HTMLElement;
         self.style.position = "absolute";
         self.style.top = "-10000" + PIXEL_UNITS;
@@ -328,7 +334,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let items =
             React.Children.map(
                 this.props.renderItems(firstRenderedItemIndex, length),
-                c => <StartOffscreen>{c}</StartOffscreen>);
+                (c, i) => <StartOffscreen offscreen={i < this.state.offScreenItemsCount}>{c}</StartOffscreen>);
         let averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);        
         
         let listChildren: any = [];
