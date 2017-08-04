@@ -4,7 +4,7 @@ import { ScrollExtensions } from "virtualized-scroll-viewer-extensions";
 
 
 interface SpacerProps extends React.Props<{}> {
-    key: string,
+    childKey: string; // key is not really passed on to in child elements
     dimension: number,
     averageItemSize: number,
     scrollDirection: ScrollExtensions.ScrollDirection,
@@ -24,7 +24,7 @@ export class Spacer extends React.Component<SpacerProps, {}>{
         let backgroundWidth = 0;
         let backgroundHeight = 0;
 
-        let { scrollDirection, dimension, averageItemSize, key } = this.props;
+        let { scrollDirection, dimension, averageItemSize, childKey } = this.props;
 
         if (scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
             // style.width = Math.round(dimension) + PIXEL_UNITS;
@@ -40,6 +40,6 @@ export class Spacer extends React.Component<SpacerProps, {}>{
         style.backgroundColor = "#f0f";
         style.backgroundRepeat = "repeat";
 
-        return React.DOM.script({ key: key, style: style });
+        return React.DOM.script({ key: childKey, style: style });
     }
 }

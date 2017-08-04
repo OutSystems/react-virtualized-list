@@ -349,7 +349,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Render a spacer element used to give blank space at the beginning or end of the list
      */
     private renderSpacer(key: string, dimension: number, averageItemSize: number): JSX.Element {
-        return <Spacer key={key}
+        return <Spacer key={key} childKey={key}
                     dimension={dimension}
                     averageItemSize={averageItemSize}
                     scrollDirection={this.scrollDirection} />;
