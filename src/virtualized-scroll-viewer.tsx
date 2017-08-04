@@ -244,6 +244,14 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Adjust off screen elements' coordinates
      */
     private renderOffScreenBuffer() {
+
+        if (this.scrollDirection !== ScrollExtensions.ScrollDirection.Vertical) {
+            if (this.state.offScreenItemsCount > 0) {
+                console.warn("Virtualization attempting offscreen items with horizontal stacking...");
+            }
+            return;
+        }
+
         this.itemsContainer.style.position = "relative";
         
         let items = this.itemsContainer.children;
@@ -252,7 +260,6 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let topPad = items.item(0) as HTMLElement;
         let bottomPad = items.item(itemsCount - 1) as HTMLElement;
 
-        // TODO: mmv: always assuming vertical scroll
         topPad.style.height = this.state.scrollOffset + PIXEL_UNITS;
         bottomPad.style.height =
             this.getRemainingSize(this.state.firstRenderedItemIndex, this.state.lastRenderedItemIndex)
@@ -489,7 +496,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
 
         let items = this.getListItems(this.itemsContainer);
 
-        if (!this.areElementsStacked(items)) {
+        if (this.scrollDirection !== ScrollExtensions.ScrollDirection.Vertical // horizontal stacking not supported anyway
+            || !this.areElementsStacked(items)) {
             // disable virtualization if list elements do not stack (not supported)
             return {
                 firstRenderedItemIndex: 0,
