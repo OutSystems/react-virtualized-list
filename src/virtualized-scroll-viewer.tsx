@@ -609,9 +609,9 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             firstRenderedItemIndex = Math.max(0, Math.floor(startOffset / averageItemSize) - 1);
             offScreenItemsCount = 0;
             if (firstRenderedItemIndex > 0) {
-                firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - Math.ceil(viewportSafetyMargin / averageItemSize));
+                firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - Math.ceil(viewportSafetyMarginBefore / averageItemSize));
             }
-            firstRenderedItemIndex = Math.max(0, Math.min(firstRenderedItemIndex, listLength - 1 - renderedItemsCount));
+            firstRenderedItemIndex = Math.max(0, Math.min(firstRenderedItemIndex, listLength - 1 - renderedItemsCountNew));
             scrollOffset = firstRenderedItemIndex * averageItemSize;
         }
         
@@ -620,7 +620,9 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             scrollOffset = 0;
         }
         
-        let lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + renderedItemsCount);
+        let beforeCount = Math.ceil(Math.max(-firstItemOffset / averageItemSize, 0));
+        let newRenderdItemsCountNew = Math.min(listLength, itemsFittingViewportCount + Math.min(safetyItemsCountBefore, beforeCount) + safetyItemsCounteAfter + offScreenItemsCount);
+        let lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + newRenderdItemsCountNew);
         
         return {
             firstRenderedItemIndex: firstRenderedItemIndex,
