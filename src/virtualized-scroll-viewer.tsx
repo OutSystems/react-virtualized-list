@@ -475,6 +475,10 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let scrollInfo = this.getScrollInfo();
         let pageBufferSize = (this.props.pageBufferSize || DEFAULT_BUFFER_SIZE) * BUFFER_MULTIPLIER;
         let viewportSafetyMargin = scrollInfo.viewportSize * (pageBufferSize / 2); // extra safety space for some more items
+        // the value 7500 was chosen as it's aproximately the maximum scroll a user can do in a single
+        // screen swipe
+        let viewportSafetyMarginBefore = 7500;
+        let viewportSafetyMarginAfter = 7500;
         let forceRecalculate = false;
         // if (returnSameStateOnSmallChanges && 
         //     Math.abs(scrollInfo.scrollOffset - this.state.effectiveScrollOffset) < (viewportSafetyMargin * 0.5)) {
@@ -525,13 +529,16 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         // number of extra items to render before/after viewport bounds that
         // helps avoiding showing blank space specially when scrolling fast
         let safetyItemsCount = Math.ceil(viewportSafetyMargin * 2 / averageItemSize);
+        let safetyItemsCountBefore = Math.ceil(viewportSafetyMarginBefore / averageItemSize);
+        let safetyItemsCounteAfter = Math.ceil(viewportSafetyMarginAfter  / averageItemSize);
         
         // rendered items = items in viewport + safety items + off screen items
         let renderedItemsCount = Math.min(listLength, itemsFittingViewportCount + safetyItemsCount + maxOffScreenItemsCount);
+        let renderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + safetyItemsCountBefore + safetyItemsCounteAfter + offScreenItemsCount);
         
         let scrollOffset = this.state.scrollOffset;
         let firstRenderedItemIndex = this.state.firstRenderedItemIndex;
-        let viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMargin;
+        let viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMarginBefore;
 
         // get first spacer bounds instead of picking first item due to items rendered offscreen which have wrong coordinates
         let firstSpacerBounds = this.itemsContainer.firstElementChild.getBoundingClientRect();
