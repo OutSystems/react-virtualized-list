@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { ObjectExtensions } from "virtualized-scroll-viewer-extensions";
+import { ObjectExtensions } from "./virtualized-scroll-viewer-extensions";
 
 const ANIMATION_APPEAR = "-appear";
 const ANIMATION_ENTER = "-enter";

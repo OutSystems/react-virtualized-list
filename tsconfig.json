@@ -8,6 +8,7 @@
         "outFile": "bin/index.js",
         "target": "es5",
         "jsx": "react",
+        "rootDir": "src",
         "experimentalDecorators": true
     },
     "exclude": [

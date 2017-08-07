@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { VirtualizedList } from "virtualized-list";
-import { Images } from "images";
+import { VirtualizedList } from "./virtualized-list";
+import { Images } from "./images";
 
 class App extends React.Component<{}, { items: number, pageBufferSize: number }> {
     

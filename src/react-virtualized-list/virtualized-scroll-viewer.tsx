@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { ScrollExtensions } from "virtualized-scroll-viewer-extensions";
+import { ScrollExtensions } from "./virtualized-scroll-viewer-extensions";
 import { Spacer } from "./spacer";
 
 function insideiOSWebView(): boolean {
@@ -322,8 +322,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             remainingSize = scrollSize - ((averageItemSize * (length - this.state.offScreenItemsCount)) + this.state.scrollOffset);
         }
         return remainingSize;
-        }
-        
+    }
+    
     private renderList(firstRenderedItemIndex: number, lastRenderedItemIndex: number): JSX.Element {
         let length = Math.min(this.props.length, lastRenderedItemIndex - firstRenderedItemIndex + 1);
         

@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { ScrollExtensions } from "virtualized-scroll-viewer-extensions";
+import { ScrollExtensions } from "./virtualized-scroll-viewer-extensions";
 
 
 interface SpacerProps extends React.Props<{}> {

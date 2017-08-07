@@ -1,4 +1,4 @@
-import { AnimatedItem, AnimatedGroup, IAnimatedAttributes } from "animated-group";
+import { AnimatedItem, AnimatedGroup, IAnimatedAttributes } from "./animated-group";
 
 const PIXELS_UNIT = "px";
 
