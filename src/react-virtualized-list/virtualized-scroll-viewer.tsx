@@ -49,24 +49,6 @@ type Rect = {
     right: number,
 };
 
-interface StartOffscreenProps extends React.Props<StartOffscreen> {
-    offscreen: boolean;
-}
-
-class StartOffscreen extends React.Component<StartOffscreenProps, {}> {
-    render() {
-        return this.props.children as JSX.Element;
-    }
-    componentDidMount() {
-        if (!this.props.offscreen) return;
-
-        var self = ReactDOM.findDOMNode(this) as HTMLElement;
-        self.style.position = "absolute";
-        self.style.top = "-10000" + PIXEL_UNITS;
-        self.style.width = "100%";
-    }
-}
-
 export class VirtualizedScrollViewer extends React.Component<IScrollViewerProperties, IScrollViewerState> {
     
     private scrollHostInfo: ScrollExtensions.IScrollHostInfo;
@@ -261,15 +243,20 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             let child = items.item(i) as HTMLElement;
             if (child.style !== undefined) {
                 // move element offscreen
+                if (!child.style.width) {
+                    child.style.width = "100%";
+                }
                 child.style.position = "absolute";
                 child.style.top = "-10000" + PIXEL_UNITS;
             }
         }
+
         for (var i = this.state.offScreenItemsCount + 1; i < itemsCount - 1; i++) {
             let child = items.item(i) as HTMLElement;
             if (child.style !== undefined) {
                 child.style.position = "";
                 child.style.top = "";
+                child.style.width = "";
             }
         }
     }
@@ -330,10 +317,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let scrollOffset = this.state.scrollOffset;
         let remainingSize = this.getRemainingSize(firstRenderedItemIndex, lastRenderedItemIndex);
         // render only visible items
-        let items =
-            React.Children.map(
-                this.props.renderItems(firstRenderedItemIndex, length),
-                (c, i) => <StartOffscreen offscreen={i < this.state.offScreenItemsCount}>{c}</StartOffscreen>);
+        let items = this.props.renderItems(firstRenderedItemIndex, length);
         let averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);        
         
         let listChildren: any = [];
