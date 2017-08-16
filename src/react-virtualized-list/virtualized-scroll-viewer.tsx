@@ -602,9 +602,9 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
             scrollOffset = 0;
         }
         
-        let beforeCount = Math.ceil(Math.max(-firstItemOffset / averageItemSize, 0));
-        let newRenderdItemsCountNew = Math.min(listLength, itemsFittingViewportCount + Math.min(safetyItemsCountBefore, beforeCount) + safetyItemsCounteAfter + offScreenItemsCount);
-        let lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + newRenderdItemsCountNew);
+        let beforeCount = Math.max(Math.ceil(scrollOffset / averageItemSize), 0);
+        let newRenderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + Math.min(safetyItemsCountBefore, beforeCount) + safetyItemsCounteAfter + offScreenItemsCount);
+        let lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + newRenderedItemsCountNew);
         
         return {
             firstRenderedItemIndex: firstRenderedItemIndex,
