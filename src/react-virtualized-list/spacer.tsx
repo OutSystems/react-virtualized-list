@@ -3,7 +3,7 @@ import * as ReactDOM from "react-dom";
 import { ScrollExtensions } from "./virtualized-scroll-viewer-extensions";
 
 
-interface SpacerProps extends React.Props<{}> {
+export interface SpacerProps extends React.Props<{}> {
     childKey: string; // key is not really passed on to in child elements
     dimension: number,
     averageItemSize: number,
@@ -12,8 +12,6 @@ interface SpacerProps extends React.Props<{}> {
 
 const FLEXBOX_DISPLAY = document.createElement("p").style.flex === undefined ? "-webkit-flex" : "flex"; // support ios under 9
 const PIXEL_UNITS = "px";
-
-
 
 export class Spacer extends React.Component<SpacerProps, {}>{
     render() {
@@ -25,11 +23,11 @@ export class Spacer extends React.Component<SpacerProps, {}>{
         let { scrollDirection, dimension, averageItemSize, childKey } = this.props;
 
         if (scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
+            style.width = dimension + PIXEL_UNITS;
             style.height = FILL_SPACE;
-            style.width = dimension;
         } else {
+            style.height = dimension + PIXEL_UNITS;            
             style.width = FILL_SPACE;
-            style.height = dimension;
         }
         
         // style.backgroundColor = "#f0f";
