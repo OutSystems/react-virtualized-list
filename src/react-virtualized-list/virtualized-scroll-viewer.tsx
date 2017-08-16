@@ -20,7 +20,9 @@ export interface IScrollViewerProperties extends React.Props<VirtualizedScrollVi
     scrollChanged?: () => void;
     renderWrapper: (children: React.ReactFragment) => JSX.Element;
     pageBufferSize?: number; // number of pages buffered
-    initializationCompleted?: () => void;  
+    initializationCompleted?: () => void;
+    viewportSafetyMarginBefore?: number;
+    viewportSafetyMarginAfter?: number;
 }
 
 interface IScrollInfo {
@@ -459,8 +461,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let scrollInfo = this.getScrollInfo();
         // the value 7500 was chosen as it's aproximately the maximum scroll a user can do in a single
         // screen swipe
-        let viewportSafetyMarginBefore = 7500;
-        let viewportSafetyMarginAfter = 7500;
+        let viewportSafetyMarginBefore = this.props.viewportSafetyMarginBefore || 7500;
+        let viewportSafetyMarginAfter = this.props.viewportSafetyMarginAfter || 7500;
         let forceRecalculate = false;
         // if (returnSameStateOnSmallChanges && 
         //     Math.abs(scrollInfo.scrollOffset - this.state.effectiveScrollOffset) < (viewportSafetyMargin * 0.5)) {
