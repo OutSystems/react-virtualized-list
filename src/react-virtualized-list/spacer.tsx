@@ -25,10 +25,11 @@ export class Spacer extends React.Component<SpacerProps, {}>{
         if (scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
             style.width = dimension + PIXEL_UNITS;
             style.height = FILL_SPACE;
-        } else {
+        } else if (scrollDirection === ScrollExtensions.ScrollDirection.Vertical) {
             style.height = dimension + PIXEL_UNITS;            
             style.width = FILL_SPACE;
         }
+        
         
         // style.backgroundColor = "#f0f";
         
