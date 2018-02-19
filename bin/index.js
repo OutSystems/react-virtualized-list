@@ -712,7 +712,7 @@ define("react-virtualized-list/virtualized-scroll-viewer", ["require", "exports"
             var renderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + safetyItemsCountBefore + safetyItemsCounteAfter + offScreenItemsCount);
             var scrollOffset = this.state.scrollOffset;
             var firstRenderedItemIndex = this.state.firstRenderedItemIndex;
-            var viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMarginBefore;
+            var viewportLowerMargin = Math.max(scrollInfo.viewportLowerBound - viewportSafetyMarginBefore, 0);
             var firstSpacerBounds = this.itemsContainer.firstElementChild.getBoundingClientRect();
             var firstItemOffset = this.getDimension(firstSpacerBounds.bottom, firstSpacerBounds.right);
             if (!forceRecalculate && Math.abs(firstItemOffset - viewportLowerMargin) <= onScreenItemsSize) {
