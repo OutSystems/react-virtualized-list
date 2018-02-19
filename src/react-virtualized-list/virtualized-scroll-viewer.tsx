@@ -525,7 +525,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         
         let scrollOffset = this.state.scrollOffset;
         let firstRenderedItemIndex = this.state.firstRenderedItemIndex;
-        let viewportLowerMargin = Math.max(scrollInfo.viewportLowerBound - viewportSafetyMarginBefore, 0);
+        let viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMarginBefore;
 
         // get first spacer bounds instead of picking first item due to items rendered offscreen which have wrong coordinates
         let firstSpacerBounds = this.itemsContainer.firstElementChild.getBoundingClientRect();
