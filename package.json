@@ -11,13 +11,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rpsequeira/react-virtualized-list.git"
+    "url": "git+https://github.com/outsystems/react-virtualized-list.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/rpsequeira/react-virtualized-list/issues"
+    "url": "https://github.com/outsystems/react-virtualized-list/issues"
   },
-  "homepage": "https://github.com/rpsequeira/react-virtualized-list#readme"
+  "homepage": "https://github.com/outsystems/react-virtualized-list#readme"
 }
