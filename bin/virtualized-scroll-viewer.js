@@ -1,19 +1,26 @@
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
-define("virtualized-scroll-viewer-extensions", ["require", "exports"], function (require, exports) {
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+define("react-virtualized-list/virtualized-scroll-viewer-extensions", ["require", "exports"], function (require, exports) {
     "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
     var ScrollExtensions;
     (function (ScrollExtensions) {
         var OVERFLOW_REGEX = /(auto|scroll)/;
         var NON_SCROLLABLE_ELEMENT_ATRIBUTE = "data-not-scrollable";
+        var ScrollDirection;
         (function (ScrollDirection) {
             ScrollDirection[ScrollDirection["Horizontal"] = 0] = "Horizontal";
             ScrollDirection[ScrollDirection["Vertical"] = 1] = "Vertical";
-        })(ScrollExtensions.ScrollDirection || (ScrollExtensions.ScrollDirection = {}));
-        var ScrollDirection = ScrollExtensions.ScrollDirection;
+            ScrollDirection[ScrollDirection["None"] = 2] = "None";
+        })(ScrollDirection = ScrollExtensions.ScrollDirection || (ScrollExtensions.ScrollDirection = {}));
         function getScrollHostInfo(element, excludeStaticParent) {
             if (element === null || element === undefined || element instanceof Document) {
                 return {
@@ -125,8 +132,9 @@ define("virtualized-scroll-viewer-extensions", ["require", "exports"], function 
         ObjectExtensions.assign = assign;
     })(ObjectExtensions = exports.ObjectExtensions || (exports.ObjectExtensions = {}));
 });
-define("animated-group", ["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-extensions"], function (require, exports, React, ReactDOM, virtualized_scroll_viewer_extensions_1) {
+define("react-virtualized-list/animated-group", ["require", "exports", "react", "react-dom", "react-virtualized-list/virtualized-scroll-viewer-extensions"], function (require, exports, React, ReactDOM, virtualized_scroll_viewer_extensions_1) {
     "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
     var ANIMATION_APPEAR = "-appear";
     var ANIMATION_ENTER = "-enter";
     var ANIMATION_LEAVE = "-leave";
@@ -135,7 +143,7 @@ define("animated-group", ["require", "exports", "react", "react-dom", "virtualiz
     var AnimatedGroup = (function (_super) {
         __extends(AnimatedGroup, _super);
         function AnimatedGroup() {
-            _super.apply(this, arguments);
+            return _super !== null && _super.apply(this, arguments) || this;
         }
         AnimatedGroup.prototype.getDefaultTransitionName = function () {
             return "";
@@ -163,8 +171,9 @@ define("animated-group", ["require", "exports", "react", "react-dom", "virtualiz
     var AnimatedItem = (function (_super) {
         __extends(AnimatedItem, _super);
         function AnimatedItem() {
-            _super.apply(this, arguments);
-            this.transitionTimeouts = [];
+            var _this = _super !== null && _super.apply(this, arguments) || this;
+            _this.transitionTimeouts = [];
+            return _this;
         }
         AnimatedItem.prototype.getAnimationClassName = function (element) {
             return this.props.transitionName;
@@ -249,13 +258,14 @@ define("animated-group", ["require", "exports", "react", "react-dom", "virtualiz
     }(React.Component));
     exports.AnimatedItem = AnimatedItem;
 });
-define("animated-size-group", ["require", "exports", "animated-group"], function (require, exports, animated_group_1) {
+define("react-virtualized-list/animated-size-group", ["require", "exports", "react-virtualized-list/animated-group"], function (require, exports, animated_group_1) {
     "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
     var PIXELS_UNIT = "px";
     var AnimatedSizeGroup = (function (_super) {
         __extends(AnimatedSizeGroup, _super);
         function AnimatedSizeGroup() {
-            _super.apply(this, arguments);
+            return _super !== null && _super.apply(this, arguments) || this;
         }
         AnimatedSizeGroup.prototype.getAnimatedItem = function () {
             return AnimatedSizeItem;
@@ -266,7 +276,7 @@ define("animated-size-group", ["require", "exports", "animated-group"], function
     var AnimatedSizeItem = (function (_super) {
         __extends(AnimatedSizeItem, _super);
         function AnimatedSizeItem() {
-            _super.apply(this, arguments);
+            return _super !== null && _super.apply(this, arguments) || this;
         }
         AnimatedSizeItem.prototype.isDisplayInline = function (style) {
             return style && style.display.indexOf("inline") === 0;
@@ -323,46 +333,104 @@ define("animated-size-group", ["require", "exports", "animated-group"], function
     }(animated_group_1.AnimatedItem));
     exports.AnimatedSizeItem = AnimatedSizeItem;
 });
-define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom", "virtualized-scroll-viewer-extensions"], function (require, exports, React, ReactDOM, virtualized_scroll_viewer_extensions_2) {
+define("react-virtualized-list/spacer", ["require", "exports", "react", "react-virtualized-list/virtualized-scroll-viewer-extensions"], function (require, exports, React, virtualized_scroll_viewer_extensions_2) {
     "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var FLEXBOX_DISPLAY = document.createElement("p").style.flex === undefined ? "-webkit-flex" : "flex";
+    var PIXEL_UNITS = "px";
+    var Spacer = (function (_super) {
+        __extends(Spacer, _super);
+        function Spacer() {
+            return _super !== null && _super.apply(this, arguments) || this;
+        }
+        Spacer.prototype.render = function () {
+            var FILL_SPACE = "100%";
+            var style = {
+                display: FLEXBOX_DISPLAY,
+            };
+            var _a = this.props, scrollDirection = _a.scrollDirection, dimension = _a.dimension, averageItemSize = _a.averageItemSize, childKey = _a.childKey;
+            if (scrollDirection === virtualized_scroll_viewer_extensions_2.ScrollExtensions.ScrollDirection.Horizontal) {
+                style.width = dimension + PIXEL_UNITS;
+                style.height = FILL_SPACE;
+            }
+            else if (scrollDirection === virtualized_scroll_viewer_extensions_2.ScrollExtensions.ScrollDirection.Vertical) {
+                style.height = dimension + PIXEL_UNITS;
+                style.width = FILL_SPACE;
+            }
+            return React.DOM.script({ key: childKey, style: style });
+        };
+        return Spacer;
+    }(React.Component));
+    exports.Spacer = Spacer;
+});
+define("react-virtualized-list/virtualized-scroll-viewer", ["require", "exports", "react", "react-dom", "react-virtualized-list/virtualized-scroll-viewer-extensions", "react-virtualized-list/spacer"], function (require, exports, React, ReactDOM, virtualized_scroll_viewer_extensions_3, spacer_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
     function insideiOSWebView() {
         return !navigator.standalone && /(iPad)|(iPhone)/i.test(navigator.userAgent) && !/safari/i.test(navigator.userAgent);
     }
     var SCROLL_EVENT_NAME = "scroll";
     var RESIZE_EVENT_NAME = "resize";
     var PIXEL_UNITS = "px";
-    var FLEXBOX_DISPLAY = document.createElement("p").style.flex === undefined ? "-webkit-flex" : "flex";
     var DEFAULT_BUFFER_SIZE = 3;
     var BUFFER_MULTIPLIER = insideiOSWebView() ? 4 : 1;
-    var MIN_ITEM_SIZE = 20;
+    var MIN_ITEM_SIZE = 10;
     var VirtualizedScrollViewer = (function (_super) {
         __extends(VirtualizedScrollViewer, _super);
         function VirtualizedScrollViewer(props, context) {
-            _super.call(this, props, context);
-            this.scrollDirection = virtualized_scroll_viewer_extensions_2.ScrollExtensions.ScrollDirection.Vertical;
-            this.hasPendingPropertiesUpdate = false;
-            this.isScrollOngoing = false;
-            this.isComponentInitialized = false;
-            this.scrollHandler = this.handleScroll.bind(this);
-            this.state = {
+            var _this = _super.call(this, props, context) || this;
+            _this.scrollDirection = virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.Vertical;
+            _this.hasPendingPropertiesUpdate = false;
+            _this.isScrollOngoing = false;
+            _this.isComponentInitialized = false;
+            _this.onWindowScrollOrResize = function () {
+                _this.removeWindowScrollHandlers();
+                _this.addScrollHandler();
+            };
+            _this.onScroll = function (scrollEvent) {
+                if (_this.pendingScrollAsyncUpdateHandle) {
+                    return;
+                }
+                _this.pendingScrollAsyncUpdateHandle = requestAnimationFrame(function () {
+                    if (_this.isDisposed) {
+                        return;
+                    }
+                    try {
+                        var newState = _this.getCurrentScrollViewerState(_this.props.length, scrollEvent.type !== RESIZE_EVENT_NAME);
+                        if (newState !== _this.state) {
+                            _this.isScrollOngoing = true;
+                            _this.setState(newState, function () { return _this.isScrollOngoing = false; });
+                        }
+                    }
+                    finally {
+                        _this.pendingScrollAsyncUpdateHandle = 0;
+                    }
+                    if (_this.props.scrollChanged) {
+                        _this.props.scrollChanged();
+                    }
+                });
+            };
+            _this.setScrollOffset = _this.scrollToOffset;
+            _this.state = {
                 firstRenderedItemIndex: 0,
                 lastRenderedItemIndex: 1,
                 averageItemSize: 0,
                 scrollOffset: 0,
                 offScreenItemsCount: 0,
-                effectiveScrollOffset: Number.MIN_VALUE
+                effectiveScrollOffset: Number.MIN_VALUE,
             };
+            return _this;
         }
         VirtualizedScrollViewer.prototype.getScrollHostInfo = function () {
             if (!this.scrollHostInfo) {
-                this.scrollHostInfo = virtualized_scroll_viewer_extensions_2.ScrollExtensions.getScrollHostInfo(this.itemsContainer);
+                this.scrollHostInfo = virtualized_scroll_viewer_extensions_3.ScrollExtensions.getScrollHostInfo(this.itemsContainer);
             }
             return this.scrollHostInfo;
         };
         VirtualizedScrollViewer.prototype.getScrollInfo = function () {
             var scrollHostInfo = this.getScrollHostInfo();
             var scrollHost = scrollHostInfo.scrollHost;
-            var scrollInfo = virtualized_scroll_viewer_extensions_2.ScrollExtensions.getScrollInfo(scrollHost);
+            var scrollInfo = virtualized_scroll_viewer_extensions_3.ScrollExtensions.getScrollInfo(scrollHost);
             var result = {
                 scrollHost: scrollHost,
                 scrollOffset: this.getDimension(scrollInfo.scroll.y, scrollInfo.scroll.x),
@@ -388,32 +456,32 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             this.scrollHostInfo = null;
             var scrollHostInfo = this.getScrollHostInfo();
             var scrollHost = scrollHostInfo.scrollHost;
-            scrollHost.addEventListener(SCROLL_EVENT_NAME, this.scrollHandler);
-            scrollHost.addEventListener(RESIZE_EVENT_NAME, this.scrollHandler);
+            scrollHost.addEventListener(SCROLL_EVENT_NAME, this.onScroll);
+            window.addEventListener(RESIZE_EVENT_NAME, this.onScroll);
             this.scrollDirection = scrollHostInfo.scrollDirection;
         };
         VirtualizedScrollViewer.prototype.removeScrollHandler = function () {
             var scrollHost = this.getScrollHostInfo().scrollHost;
-            scrollHost.removeEventListener(SCROLL_EVENT_NAME, this.scrollHandler);
-            scrollHost.removeEventListener(RESIZE_EVENT_NAME, this.scrollHandler);
+            scrollHost.removeEventListener(SCROLL_EVENT_NAME, this.onScroll);
+            window.removeEventListener(RESIZE_EVENT_NAME, this.onScroll);
+        };
+        VirtualizedScrollViewer.prototype.removeWindowScrollHandlers = function () {
+            window.removeEventListener(SCROLL_EVENT_NAME, this.onWindowScrollOrResize, true);
+            window.removeEventListener(RESIZE_EVENT_NAME, this.onWindowScrollOrResize, true);
         };
         VirtualizedScrollViewer.prototype.componentDidMount = function () {
             var _this = this;
             this.itemsContainer = ReactDOM.findDOMNode(this);
-            var onWindowScroll = function () {
-                window.removeEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
-                window.removeEventListener(RESIZE_EVENT_NAME, onWindowScroll, true);
-                _this.addScrollHandler();
-            };
             requestAnimationFrame(function () {
                 if (!_this.isDisposed) {
-                    window.addEventListener(SCROLL_EVENT_NAME, onWindowScroll, true);
-                    window.addEventListener(RESIZE_EVENT_NAME, onWindowScroll, true);
+                    window.addEventListener(SCROLL_EVENT_NAME, _this.onWindowScrollOrResize, true);
+                    window.addEventListener(RESIZE_EVENT_NAME, _this.onWindowScrollOrResize, true);
                 }
             });
             this.setState(this.getCurrentScrollViewerState(this.props.length));
         };
         VirtualizedScrollViewer.prototype.componentWillUnmount = function () {
+            this.removeWindowScrollHandlers();
             this.removeScrollHandler();
             this.scrollHostInfo = null;
             this.itemsContainer = null;
@@ -437,7 +505,7 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             this.renderOffScreenBuffer();
             if (this.setPendingScroll) {
                 requestAnimationFrame(function () {
-                    if (!_this.isDisposed) {
+                    if (!_this.isDisposed && _this.setPendingScroll) {
                         _this.setPendingScroll();
                         _this.setPendingScroll = null;
                     }
@@ -455,48 +523,39 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             }
         };
         VirtualizedScrollViewer.prototype.renderOffScreenBuffer = function () {
+            if (this.scrollDirection !== virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.Vertical) {
+                if (this.state.offScreenItemsCount > 0) {
+                    console.warn("Virtualization attempting offscreen items with horizontal stacking...");
+                }
+                return;
+            }
             this.itemsContainer.style.position = "relative";
-            var items = this.getListItems(this.itemsContainer);
-            for (var _i = 0, _a = items.slice(0, this.state.offScreenItemsCount); _i < _a.length; _i++) {
-                var item = _a[_i];
-                var child = item;
+            var items = this.itemsContainer.children;
+            var itemsCount = this.itemsContainer.childElementCount;
+            var topPad = items.item(0);
+            var bottomPad = items.item(itemsCount - 1);
+            topPad.style.height = this.state.scrollOffset + PIXEL_UNITS;
+            bottomPad.style.height =
+                this.getRemainingSize(this.state.firstRenderedItemIndex, this.state.lastRenderedItemIndex)
+                    + PIXEL_UNITS;
+            for (var i = 1; i < this.state.offScreenItemsCount + 1; i++) {
+                var child = items.item(i);
                 if (child.style !== undefined) {
+                    if (!child.style.width) {
+                        child.style.width = "100%";
+                    }
                     child.style.position = "absolute";
                     child.style.top = "-10000" + PIXEL_UNITS;
                 }
             }
-            for (var _b = 0, _c = items.slice(this.state.offScreenItemsCount); _b < _c.length; _b++) {
-                var item = _c[_b];
-                var child = item;
+            for (var i = this.state.offScreenItemsCount + 1; i < itemsCount - 1; i++) {
+                var child = items.item(i);
                 if (child.style !== undefined) {
                     child.style.position = "";
                     child.style.top = "";
+                    child.style.width = "";
                 }
             }
-        };
-        VirtualizedScrollViewer.prototype.handleScroll = function (scrollEvent) {
-            var _this = this;
-            if (this.pendingScrollAsyncUpdateHandle) {
-                return;
-            }
-            this.pendingScrollAsyncUpdateHandle = requestAnimationFrame(function () {
-                if (_this.isDisposed) {
-                    return;
-                }
-                try {
-                    var newState = _this.getCurrentScrollViewerState(_this.props.length, true);
-                    if (newState !== _this.state) {
-                        _this.isScrollOngoing = true;
-                        _this.setState(newState, function () { return _this.isScrollOngoing = false; });
-                    }
-                }
-                finally {
-                    _this.pendingScrollAsyncUpdateHandle = 0;
-                }
-                if (_this.props.scrollChanged) {
-                    _this.props.scrollChanged();
-                }
-            });
         };
         VirtualizedScrollViewer.prototype.shouldComponentUpdate = function (nextProps, nextState) {
             return nextState.firstRenderedItemIndex !== this.state.firstRenderedItemIndex ||
@@ -504,42 +563,40 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 nextState.scrollOffset !== this.state.scrollOffset ||
                 nextProps !== this.props;
         };
-        VirtualizedScrollViewer.prototype.renderList = function (firstRenderedItemIndex, lastRenderedItemIndex) {
-            var scrollOffset = this.state.scrollOffset;
+        VirtualizedScrollViewer.prototype.getRemainingSize = function (firstRenderedItemIndex, lastRenderedItemIndex) {
             var length = Math.min(this.props.length, lastRenderedItemIndex - firstRenderedItemIndex + 1);
-            var items = this.props.renderItems(firstRenderedItemIndex, length);
             var remainingSize = 0;
+            var averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);
             if (lastRenderedItemIndex < (this.props.length - 1)) {
-                var averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);
                 var scrollSize = averageItemSize * this.props.length;
-                remainingSize = scrollSize - ((averageItemSize * length) + scrollOffset);
+                remainingSize = scrollSize - ((averageItemSize * (length - this.state.offScreenItemsCount)) + this.state.scrollOffset);
             }
+            return remainingSize;
+        };
+        VirtualizedScrollViewer.prototype.renderList = function (firstRenderedItemIndex, lastRenderedItemIndex) {
+            var length = Math.min(this.props.length, lastRenderedItemIndex - firstRenderedItemIndex + 1);
+            var scrollOffset = this.state.scrollOffset;
+            var remainingSize = this.getRemainingSize(firstRenderedItemIndex, lastRenderedItemIndex);
+            var items = this.props.renderItems(firstRenderedItemIndex, length);
+            var averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);
             var listChildren = [];
-            listChildren.push(this.renderSpacer("first-spacer", scrollOffset));
+            if (this.scrollDirection !== virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.None) {
+                listChildren.push(this.renderSpacer("first-spacer", scrollOffset, averageItemSize));
+            }
             listChildren.push(items);
-            listChildren.push(this.renderSpacer("last-spacer", remainingSize));
+            if (this.scrollDirection !== virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.None) {
+                listChildren.push(this.renderSpacer("last-spacer", remainingSize, averageItemSize));
+            }
             return this.props.renderWrapper(listChildren);
         };
-        VirtualizedScrollViewer.prototype.renderSpacer = function (key, dimension) {
-            var FILL_SPACE = "100%";
-            var style = {
-                display: FLEXBOX_DISPLAY,
-            };
-            if (this.scrollDirection === virtualized_scroll_viewer_extensions_2.ScrollExtensions.ScrollDirection.Horizontal) {
-                style.width = Math.round(dimension) + PIXEL_UNITS;
-                style.height = FILL_SPACE;
-            }
-            else {
-                style.width = FILL_SPACE;
-                style.height = Math.round(dimension) + PIXEL_UNITS;
-            }
-            return React.DOM.script({ key: key, style: style });
+        VirtualizedScrollViewer.prototype.renderSpacer = function (key, dimension, averageItemSize) {
+            return React.createElement(spacer_1.Spacer, { key: key, childKey: key, dimension: dimension, averageItemSize: averageItemSize, scrollDirection: this.scrollDirection });
         };
         VirtualizedScrollViewer.prototype.render = function () {
             return this.renderList(this.state.firstRenderedItemIndex, this.state.lastRenderedItemIndex);
         };
         VirtualizedScrollViewer.prototype.getDimension = function (vertical, horizontal) {
-            return this.scrollDirection === virtualized_scroll_viewer_extensions_2.ScrollExtensions.ScrollDirection.Horizontal ? horizontal : vertical;
+            return this.scrollDirection === virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.Vertical ? vertical : horizontal;
         };
         VirtualizedScrollViewer.prototype.getListItems = function (itemsContainer) {
             var items = [];
@@ -558,13 +615,13 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 top: bounds.top,
                 bottom: bounds.bottom,
             };
-            if (this.scrollDirection === virtualized_scroll_viewer_extensions_2.ScrollExtensions.ScrollDirection.Horizontal) {
+            if (this.scrollDirection === virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.Horizontal) {
                 if (rect.width < MIN_ITEM_SIZE) {
                     rect.width = MIN_ITEM_SIZE;
                     rect.right = rect.left + rect.width;
                 }
             }
-            else {
+            else if (this.scrollDirection === virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.Vertical) {
                 if (rect.height < MIN_ITEM_SIZE) {
                     rect.height = MIN_ITEM_SIZE;
                     rect.bottom = rect.top + rect.height;
@@ -617,20 +674,23 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
         VirtualizedScrollViewer.prototype.getCurrentScrollViewerState = function (listLength, returnSameStateOnSmallChanges) {
             if (returnSameStateOnSmallChanges === void 0) { returnSameStateOnSmallChanges = false; }
             var scrollInfo = this.getScrollInfo();
-            var pageBufferSize = (this.props.pageBufferSize || DEFAULT_BUFFER_SIZE) * BUFFER_MULTIPLIER;
-            var viewportSafetyMargin = scrollInfo.viewportSize * (pageBufferSize / 2);
-            if (returnSameStateOnSmallChanges && Math.abs(scrollInfo.scrollOffset - this.state.effectiveScrollOffset) < (viewportSafetyMargin * 0.5)) {
-                return this.state;
+            var viewportSafetyMarginBefore = this.props.viewportSafetyMarginBefore || 7500;
+            var viewportSafetyMarginAfter = this.props.viewportSafetyMarginAfter || 7500;
+            var forceRecalculate = false;
+            if (scrollInfo.scrollOffset < (scrollInfo.viewportSize / 4) && (this.state.firstRenderedItemIndex > 0 || this.state.offScreenItemsCount > 0)) {
+                forceRecalculate = true;
             }
             var items = this.getListItems(this.itemsContainer);
-            if (!this.areElementsStacked(items)) {
+            if (this.scrollDirection !== virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.Vertical
+                || !this.areElementsStacked(items)) {
+                this.scrollDirection = virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.None;
                 return {
                     firstRenderedItemIndex: 0,
                     lastRenderedItemIndex: Math.max(1, this.props.length - 1),
                     averageItemSize: 0,
                     scrollOffset: 0,
                     offScreenItemsCount: 0,
-                    effectiveScrollOffset: scrollInfo.scrollOffset
+                    effectiveScrollOffset: scrollInfo.scrollOffset,
                 };
             }
             var lastSpacerBounds = this.itemsContainer.lastElementChild.getBoundingClientRect();
@@ -647,14 +707,15 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             }
             var itemsFittingViewportCount = Math.ceil(scrollInfo.viewportSize / averageItemSize);
             var maxOffScreenItemsCount = itemsFittingViewportCount;
-            var safetyItemsCount = Math.ceil(viewportSafetyMargin * 2 / averageItemSize);
-            var renderedItemsCount = Math.min(listLength, itemsFittingViewportCount + safetyItemsCount + maxOffScreenItemsCount);
+            var safetyItemsCountBefore = Math.ceil(viewportSafetyMarginBefore / averageItemSize);
+            var safetyItemsCounteAfter = Math.ceil(viewportSafetyMarginAfter / averageItemSize);
+            var renderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + safetyItemsCountBefore + safetyItemsCounteAfter + offScreenItemsCount);
             var scrollOffset = this.state.scrollOffset;
             var firstRenderedItemIndex = this.state.firstRenderedItemIndex;
-            var viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMargin;
+            var viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMarginBefore;
             var firstSpacerBounds = this.itemsContainer.firstElementChild.getBoundingClientRect();
             var firstItemOffset = this.getDimension(firstSpacerBounds.bottom, firstSpacerBounds.right);
-            if (Math.abs(firstItemOffset - viewportLowerMargin) <= onScreenItemsSize) {
+            if (!forceRecalculate && Math.abs(firstItemOffset - viewportLowerMargin) <= onScreenItemsSize) {
                 if (firstItemOffset < viewportLowerMargin) {
                     var itemsGoingOffScreen = this.countItemsAndSizeThatFitIn(onScreenItems, Math.abs(viewportLowerMargin - firstItemOffset));
                     if (itemsGoingOffScreen.count > 0) {
@@ -702,22 +763,24 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
                 firstRenderedItemIndex = Math.max(0, Math.floor(startOffset / averageItemSize) - 1);
                 offScreenItemsCount = 0;
                 if (firstRenderedItemIndex > 0) {
-                    firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - Math.ceil(viewportSafetyMargin / averageItemSize));
+                    firstRenderedItemIndex = Math.max(0, firstRenderedItemIndex - Math.ceil(viewportSafetyMarginBefore / averageItemSize));
                 }
-                firstRenderedItemIndex = Math.max(0, Math.min(firstRenderedItemIndex, listLength - 1 - renderedItemsCount));
+                firstRenderedItemIndex = Math.max(0, Math.min(firstRenderedItemIndex, listLength - 1 - renderedItemsCountNew));
                 scrollOffset = firstRenderedItemIndex * averageItemSize;
             }
             if (firstRenderedItemIndex === 0 && offScreenItemsCount === 0) {
                 scrollOffset = 0;
             }
-            var lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + renderedItemsCount);
+            var beforeCount = Math.max(Math.ceil(scrollOffset / averageItemSize), 0);
+            var newRenderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + Math.min(safetyItemsCountBefore, beforeCount) + safetyItemsCounteAfter + offScreenItemsCount);
+            var lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + newRenderedItemsCountNew);
             return {
                 firstRenderedItemIndex: firstRenderedItemIndex,
                 lastRenderedItemIndex: lastRenderedItemIndex,
                 averageItemSize: averageItemSize,
                 scrollOffset: scrollOffset,
                 offScreenItemsCount: offScreenItemsCount,
-                effectiveScrollOffset: scrollInfo.scrollOffset
+                effectiveScrollOffset: scrollInfo.scrollOffset,
             };
         };
         Object.defineProperty(VirtualizedScrollViewer.prototype, "isScrolling", {
@@ -741,17 +804,48 @@ define("virtualized-scroll-viewer", ["require", "exports", "react", "react-dom",
             enumerable: true,
             configurable: true
         });
-        VirtualizedScrollViewer.prototype.setScrollOffset = function (x, y) {
-            var scrollInfo = this.getScrollInfo();
-            var scrollHost = scrollInfo.scrollHost;
-            var scrollX = this.getDimension(undefined, x);
-            var scrollY = this.getDimension(y, undefined);
-            var updateScroll = function () { virtualized_scroll_viewer_extensions_2.ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY); };
+        VirtualizedScrollViewer.prototype.scrollToIndex = function (index) {
+            var _this = this;
+            this.internalSetScrollOffset(function () {
+                var scrollInfo = _this.getScrollInfo();
+                var scrollHost = scrollInfo.scrollHost;
+                var scrollOffset = _this.state.averageItemSize * index;
+                var firstVisibleItemOffset = scrollInfo.scrollOffset;
+                var needsScroll = false;
+                if (scrollOffset < firstVisibleItemOffset) {
+                    needsScroll = true;
+                }
+                else {
+                    var lastVisibleItemOffset = firstVisibleItemOffset + scrollInfo.viewportSize - _this.state.averageItemSize;
+                    if (scrollOffset > lastVisibleItemOffset) {
+                        scrollOffset = scrollOffset - (lastVisibleItemOffset - firstVisibleItemOffset);
+                        needsScroll = true;
+                    }
+                }
+                if (!needsScroll) {
+                    return;
+                }
+                var scrollX = _this.getDimension(undefined, scrollOffset);
+                var scrollY = _this.getDimension(scrollOffset, undefined);
+                virtualized_scroll_viewer_extensions_3.ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY, false);
+            });
+        };
+        VirtualizedScrollViewer.prototype.scrollToOffset = function (x, y) {
+            var _this = this;
+            this.internalSetScrollOffset(function () {
+                var scrollInfo = _this.getScrollInfo();
+                var scrollHost = scrollInfo.scrollHost;
+                var scrollX = _this.getDimension(undefined, x);
+                var scrollY = _this.getDimension(y, undefined);
+                virtualized_scroll_viewer_extensions_3.ScrollExtensions.setScrollOffset(scrollHost, scrollX, scrollY);
+            });
+        };
+        VirtualizedScrollViewer.prototype.internalSetScrollOffset = function (setScroll) {
             if (this.isInitialized) {
-                updateScroll();
+                setScroll();
             }
             else {
-                this.setPendingScroll = updateScroll;
+                this.setPendingScroll = setScroll;
             }
         };
         return VirtualizedScrollViewer;

@@ -323,9 +323,13 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);        
         
         let listChildren: any = [];
-        listChildren.push(this.renderSpacer("first-spacer", scrollOffset, averageItemSize)); // compensate scroll offset
+        if(this.scrollDirection !== ScrollExtensions.ScrollDirection.None) {
+            listChildren.push(this.renderSpacer("first-spacer", scrollOffset, averageItemSize)); // compensate scroll offset
+        }
         listChildren.push(items);
-        listChildren.push(this.renderSpacer("last-spacer", remainingSize, averageItemSize)); // compensate scroll height/width
+        if(this.scrollDirection !== ScrollExtensions.ScrollDirection.None) {
+            listChildren.push(this.renderSpacer("last-spacer", remainingSize, averageItemSize)); // compensate scroll height/width
+        }
         
         return this.props.renderWrapper(listChildren);
     }
@@ -348,7 +352,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      * Returns the appropriate dimension according to the scroll direction
      */
     private getDimension(vertical: number, horizontal: number): number {
-        return this.scrollDirection === ScrollExtensions.ScrollDirection.Horizontal ? horizontal : vertical;
+        return this.scrollDirection === ScrollExtensions.ScrollDirection.Vertical ? vertical : horizontal;
     }
     
     /**
@@ -378,7 +382,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
                 rect.width = MIN_ITEM_SIZE;
                 rect.right = rect.left + rect.width;
             }
-        } else {
+        } else if (this.scrollDirection === ScrollExtensions.ScrollDirection.Vertical) {
             if (rect.height < MIN_ITEM_SIZE) {
                 rect.height = MIN_ITEM_SIZE;
                 rect.bottom = rect.top + rect.height;
@@ -479,6 +483,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         if (this.scrollDirection !== ScrollExtensions.ScrollDirection.Vertical // horizontal stacking not supported anyway
             || !this.areElementsStacked(items)) {
             // disable virtualization if list elements do not stack (not supported)
+            this.scrollDirection = ScrollExtensions.ScrollDirection.None;
             return {
                 firstRenderedItemIndex: 0,
                 lastRenderedItemIndex: Math.max(1, this.props.length - 1), // we need at least 2 elements to find the stacking direction
