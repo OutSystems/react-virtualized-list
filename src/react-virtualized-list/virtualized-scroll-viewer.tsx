@@ -519,10 +519,10 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         // number of extra items to render before/after viewport bounds that
         // helps avoiding showing blank space specially when scrolling fast
         let safetyItemsCountBefore = Math.ceil(viewportSafetyMarginBefore / averageItemSize);
-        let safetyItemsCounteAfter = Math.ceil(viewportSafetyMarginAfter / averageItemSize);
+        let safetyItemsCountAfter = Math.ceil(viewportSafetyMarginAfter / averageItemSize);
 
         // rendered items = items in viewport + safety items + off screen items
-        let renderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + safetyItemsCountBefore + safetyItemsCounteAfter + offScreenItemsCount);
+        let renderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + safetyItemsCountBefore + safetyItemsCountAfter + offScreenItemsCount);
 
         let scrollOffset = this.state.scrollOffset;
         let firstRenderedItemIndex = this.state.firstRenderedItemIndex;
@@ -609,7 +609,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         }
 
         let beforeCount = Math.max(Math.ceil(scrollOffset / averageItemSize), 0);
-        let newRenderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + Math.min(safetyItemsCountBefore, beforeCount) + safetyItemsCounteAfter + offScreenItemsCount);
+        let newRenderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + Math.min(safetyItemsCountBefore, beforeCount) + safetyItemsCountAfter + offScreenItemsCount);
         let lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + newRenderedItemsCountNew);
 
         return {
