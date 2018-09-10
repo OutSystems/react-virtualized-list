@@ -362,12 +362,12 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         let items: Element[] = [];
         let children = itemsContainer.children;
 
-        // ignore spacer elements
-        let start_idx = children.length > 0 && Spacer.isSpacer(children[0]) ? 1 : 0;
-        let end_idx = children.length > 0 && Spacer.isSpacer(children[children.length - 1]) ? children.length - 2 : children.length - 1;
-        for (let i = start_idx; i < end_idx; i++) {
-            var elem = itemsContainer.children[i];
-            if (!Spacer.isSpacer(elem)) {
+        if (children.length > 0) {
+            // ignore spacer elements
+            let start_idx = Spacer.isSpacer(children[0]) ? 1 : 0;
+            let end_idx = Spacer.isSpacer(children[children.length - 1]) ? children.length - 2 : children.length - 1;
+            for (let i = start_idx; i < end_idx; i++) {
+                var elem = itemsContainer.children[i];
                 items.push(elem);
             }
         }
