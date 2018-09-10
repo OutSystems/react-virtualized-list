@@ -360,9 +360,16 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      */
     private getListItems(itemsContainer: HTMLElement): Element[] {
         let items: Element[] = [];
+        let children = itemsContainer.children;
+
         // ignore spacer elements
-        for (let i = 1; i < itemsContainer.children.length - 1; i++) {
-            items.push(itemsContainer.children[i]);
+        let start_idx = children.length > 0 && Spacer.isSpacer(children[0]) ? 1 : 0;
+        let end_idx = children.length > 0 && Spacer.isSpacer(children[children.length - 1]) ? children.length - 2 : children.length - 1;
+        for (let i = start_idx; i < end_idx; i++) {
+            var elem = itemsContainer.children[i];
+            if (!Spacer.isSpacer(elem)) {
+                items.push(elem);
+            }
         }
         return items;
     }
@@ -481,13 +488,17 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
 
         let items = this.getListItems(this.itemsContainer);
 
-        if (this.scrollDirection !== ScrollExtensions.ScrollDirection.Vertical // horizontal stacking not supported anyway
-            || !this.areElementsStacked(items)) {
+        // We need at least 2 elements to find the stacking direction
+        if (items.length >= 2 && !this.areElementsStacked(items)) {
             // disable virtualization if list elements do not stack (not supported)
             this.scrollDirection = ScrollExtensions.ScrollDirection.None;
+        }
+
+        if (this.scrollDirection !== ScrollExtensions.ScrollDirection.Vertical // horizontal stacking not supported anyway
+            || items.length < 2) { // Also abort if there isn't at least 2 elements
             return {
                 firstRenderedItemIndex: 0,
-                lastRenderedItemIndex: Math.max(1, this.props.length - 1), // we need at least 2 elements to find the stacking direction
+                lastRenderedItemIndex: Math.max(1, this.props.length - 1),
                 averageItemSize: 0,
                 scrollOffset: 0,
                 offScreenItemsCount: 0,
