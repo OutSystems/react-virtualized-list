@@ -574,6 +574,7 @@ define("react-virtualized-list/virtualized-scroll-viewer", ["require", "exports"
             return remainingSize;
         };
         VirtualizedScrollViewer.prototype.renderList = function (firstRenderedItemIndex, lastRenderedItemIndex) {
+            var _this = this;
             var length = Math.min(this.props.length, lastRenderedItemIndex - firstRenderedItemIndex + 1);
             var scrollOffset = this.state.scrollOffset;
             var remainingSize = this.getRemainingSize(firstRenderedItemIndex, lastRenderedItemIndex);
@@ -581,16 +582,16 @@ define("react-virtualized-list/virtualized-scroll-viewer", ["require", "exports"
             var averageItemSize = Math.max(MIN_ITEM_SIZE, this.state.averageItemSize);
             var listChildren = [];
             if (this.scrollDirection !== virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.None) {
-                listChildren.push(this.renderSpacer("first-spacer", scrollOffset, averageItemSize));
+                listChildren.push(this.renderSpacer("first-spacer", scrollOffset, averageItemSize, function (spacer) { return _this.firstSpacer = spacer; }));
             }
             listChildren.push(items);
             if (this.scrollDirection !== virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.None) {
-                listChildren.push(this.renderSpacer("last-spacer", remainingSize, averageItemSize));
+                listChildren.push(this.renderSpacer("last-spacer", remainingSize, averageItemSize, function (spacer) { return _this.lastSpacer = spacer; }));
             }
             return this.props.renderWrapper(listChildren);
         };
-        VirtualizedScrollViewer.prototype.renderSpacer = function (key, dimension, averageItemSize) {
-            return React.createElement(spacer_1.Spacer, { key: key, childKey: key, dimension: dimension, averageItemSize: averageItemSize, scrollDirection: this.scrollDirection });
+        VirtualizedScrollViewer.prototype.renderSpacer = function (key, dimension, averageItemSize, storeRef) {
+            return React.createElement(spacer_1.Spacer, { key: key, childKey: key, dimension: dimension, averageItemSize: averageItemSize, scrollDirection: this.scrollDirection, ref: function (spacer) { return storeRef(ReactDOM.findDOMNode(spacer)); } });
         };
         VirtualizedScrollViewer.prototype.render = function () {
             return this.renderList(this.state.firstRenderedItemIndex, this.state.lastRenderedItemIndex);
@@ -600,10 +601,19 @@ define("react-virtualized-list/virtualized-scroll-viewer", ["require", "exports"
         };
         VirtualizedScrollViewer.prototype.getListItems = function (itemsContainer) {
             var items = [];
-            for (var i = 1; i < itemsContainer.children.length - 1; i++) {
-                items.push(itemsContainer.children[i]);
+            var children = itemsContainer.children;
+            if (children.length > 0) {
+                var startIdx = this.isSpacer(children[0]) ? 1 : 0;
+                var endIdx = this.isSpacer(children[children.length - 1]) ? children.length - 2 : children.length - 1;
+                for (var i = startIdx; i < endIdx; i++) {
+                    var elem = itemsContainer.children[i];
+                    items.push(elem);
+                }
             }
             return items;
+        };
+        VirtualizedScrollViewer.prototype.isSpacer = function (element) {
+            return element === this.firstSpacer || element === this.lastSpacer;
         };
         VirtualizedScrollViewer.prototype.getItemBounds = function (item) {
             var bounds = item.getBoundingClientRect();
@@ -675,15 +685,18 @@ define("react-virtualized-list/virtualized-scroll-viewer", ["require", "exports"
             if (returnSameStateOnSmallChanges === void 0) { returnSameStateOnSmallChanges = false; }
             var scrollInfo = this.getScrollInfo();
             var viewportSafetyMarginBefore = this.props.viewportSafetyMarginBefore || 7500;
+            viewportSafetyMarginBefore = Math.min(scrollInfo.scrollOffset, viewportSafetyMarginBefore);
             var viewportSafetyMarginAfter = this.props.viewportSafetyMarginAfter || 7500;
             var forceRecalculate = false;
             if (scrollInfo.scrollOffset < (scrollInfo.viewportSize / 4) && (this.state.firstRenderedItemIndex > 0 || this.state.offScreenItemsCount > 0)) {
                 forceRecalculate = true;
             }
             var items = this.getListItems(this.itemsContainer);
-            if (this.scrollDirection !== virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.Vertical
-                || !this.areElementsStacked(items)) {
+            if (items.length >= 2 && !this.areElementsStacked(items)) {
                 this.scrollDirection = virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.None;
+            }
+            if (this.scrollDirection !== virtualized_scroll_viewer_extensions_3.ScrollExtensions.ScrollDirection.Vertical
+                || items.length < 2) {
                 return {
                     firstRenderedItemIndex: 0,
                     lastRenderedItemIndex: Math.max(1, this.props.length - 1),
@@ -708,8 +721,8 @@ define("react-virtualized-list/virtualized-scroll-viewer", ["require", "exports"
             var itemsFittingViewportCount = Math.ceil(scrollInfo.viewportSize / averageItemSize);
             var maxOffScreenItemsCount = itemsFittingViewportCount;
             var safetyItemsCountBefore = Math.ceil(viewportSafetyMarginBefore / averageItemSize);
-            var safetyItemsCounteAfter = Math.ceil(viewportSafetyMarginAfter / averageItemSize);
-            var renderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + safetyItemsCountBefore + safetyItemsCounteAfter + offScreenItemsCount);
+            var safetyItemsCountAfter = Math.ceil(viewportSafetyMarginAfter / averageItemSize);
+            var renderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + safetyItemsCountBefore + safetyItemsCountAfter + offScreenItemsCount);
             var scrollOffset = this.state.scrollOffset;
             var firstRenderedItemIndex = this.state.firstRenderedItemIndex;
             var viewportLowerMargin = scrollInfo.viewportLowerBound - viewportSafetyMarginBefore;
@@ -772,7 +785,7 @@ define("react-virtualized-list/virtualized-scroll-viewer", ["require", "exports"
                 scrollOffset = 0;
             }
             var beforeCount = Math.max(Math.ceil(scrollOffset / averageItemSize), 0);
-            var newRenderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + Math.min(safetyItemsCountBefore, beforeCount) + safetyItemsCounteAfter + offScreenItemsCount);
+            var newRenderedItemsCountNew = Math.min(listLength, itemsFittingViewportCount + Math.min(safetyItemsCountBefore, beforeCount) + safetyItemsCountAfter + offScreenItemsCount);
             var lastRenderedItemIndex = Math.min(listLength - 1, firstRenderedItemIndex + newRenderedItemsCountNew);
             return {
                 firstRenderedItemIndex: firstRenderedItemIndex,
