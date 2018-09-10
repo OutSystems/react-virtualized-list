@@ -1,5 +1,4 @@
 import * as React from "react";
-import * as ReactDOM from "react-dom";
 import { ScrollExtensions } from "./virtualized-scroll-viewer-extensions";
 
 
@@ -12,7 +11,6 @@ export interface SpacerProps extends React.Props<{}> {
 
 const FLEXBOX_DISPLAY = document.createElement("p").style.flex === undefined ? "-webkit-flex" : "flex"; // support ios under 9
 const PIXEL_UNITS = "px";
-const SPACER_ATTRIBUTE = "virtualized-list-spacer";
 
 export class Spacer extends React.Component<SpacerProps, {}>{
     render() {
@@ -31,10 +29,6 @@ export class Spacer extends React.Component<SpacerProps, {}>{
             style.width = FILL_SPACE;
         }
 
-        return React.DOM.script({ key: childKey, style: style, data: SPACER_ATTRIBUTE });
-    }
-
-    static isSpacer(element: Element): boolean {
-        return element instanceof HTMLScriptElement && element.getAttribute("data") === SPACER_ATTRIBUTE;
+        return React.DOM.script({ key: childKey, style: style });
     }
 }
