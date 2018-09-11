@@ -605,7 +605,7 @@ define("react-virtualized-list/virtualized-scroll-viewer", ["require", "exports"
             if (children.length > 0) {
                 var startIdx = this.isSpacer(children[0]) ? 1 : 0;
                 var endIdx = this.isSpacer(children[children.length - 1]) ? children.length - 2 : children.length - 1;
-                for (var i = startIdx; i < endIdx; i++) {
+                for (var i = startIdx; i <= endIdx; i++) {
                     var elem = itemsContainer.children[i];
                     items.push(elem);
                 }
