@@ -61,6 +61,8 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     private isScrollOngoing: boolean = false; // true when rendering to due scroll changes
     private isComponentInitialized: boolean = false;
     private setPendingScroll: () => void;
+    private firstSpacer: Element;
+    private lastSpacer: Element;
 
     constructor(props: IScrollViewerProperties, context: any) {
         super(props, context);
@@ -324,11 +326,11 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
 
         let listChildren: any = [];
         if (this.scrollDirection !== ScrollExtensions.ScrollDirection.None) {
-            listChildren.push(this.renderSpacer("first-spacer", scrollOffset, averageItemSize)); // compensate scroll offset
+            listChildren.push(this.renderSpacer("first-spacer", scrollOffset, averageItemSize, (spacer: Element) => this.firstSpacer = spacer)); // compensate scroll offset
         }
         listChildren.push(items);
         if (this.scrollDirection !== ScrollExtensions.ScrollDirection.None) {
-            listChildren.push(this.renderSpacer("last-spacer", remainingSize, averageItemSize)); // compensate scroll height/width
+            listChildren.push(this.renderSpacer("last-spacer", remainingSize, averageItemSize, (spacer: Element) => this.lastSpacer = spacer)); // compensate scroll height/width
         }
 
         return this.props.renderWrapper(listChildren);
@@ -337,11 +339,12 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     /**
      * Render a spacer element used to give blank space at the beginning or end of the list
      */
-    private renderSpacer(key: string, dimension: number, averageItemSize: number): JSX.Element {
+    private renderSpacer(key: string, dimension: number, averageItemSize: number, storeRef: (e: Element) => void): JSX.Element {
         return <Spacer key={key} childKey={key}
             dimension={dimension}
             averageItemSize={averageItemSize}
-            scrollDirection={this.scrollDirection} />;
+            scrollDirection={this.scrollDirection}
+            ref={(spacer: Spacer) => storeRef(ReactDOM.findDOMNode(spacer))} />;
     }
 
     public render(): JSX.Element {
@@ -360,11 +363,22 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      */
     private getListItems(itemsContainer: HTMLElement): Element[] {
         let items: Element[] = [];
-        // ignore spacer elements
-        for (let i = 1; i < itemsContainer.children.length - 1; i++) {
-            items.push(itemsContainer.children[i]);
+        let children = itemsContainer.children;
+
+        if (children.length > 0) {
+            // ignore spacer elements
+            let startIdx = this.isSpacer(children[0]) ? 1 : 0;
+            let endIdx = this.isSpacer(children[children.length - 1]) ? children.length - 2 : children.length - 1;
+            for (let i = startIdx; i <= endIdx; i++) {
+                var elem = itemsContainer.children[i];
+                items.push(elem);
+            }
         }
         return items;
+    }
+
+    private isSpacer(element: Element): boolean {
+        return element === this.firstSpacer || element === this.lastSpacer;
     }
 
     private getItemBounds(item: Element): Rect {
@@ -481,13 +495,17 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
 
         let items = this.getListItems(this.itemsContainer);
 
-        if (this.scrollDirection !== ScrollExtensions.ScrollDirection.Vertical // horizontal stacking not supported anyway
-            || !this.areElementsStacked(items)) {
+        // We need at least 2 elements to find the stacking direction
+        if (items.length >= 2 && !this.areElementsStacked(items)) {
             // disable virtualization if list elements do not stack (not supported)
             this.scrollDirection = ScrollExtensions.ScrollDirection.None;
+        }
+
+        if (this.scrollDirection !== ScrollExtensions.ScrollDirection.Vertical // horizontal stacking not supported anyway
+            || items.length < 2) { // Also abort if there isn't at least 2 elements
             return {
                 firstRenderedItemIndex: 0,
-                lastRenderedItemIndex: Math.max(1, this.props.length - 1), // we need at least 2 elements to find the stacking direction
+                lastRenderedItemIndex: Math.max(1, this.props.length - 1),
                 averageItemSize: 0,
                 scrollOffset: 0,
                 offScreenItemsCount: 0,

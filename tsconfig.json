@@ -9,7 +9,8 @@
         "target": "es5",
         "jsx": "react",
         "rootDir": "src",
-        "experimentalDecorators": true
+        "experimentalDecorators": true,
+        "declaration": true
     },
     "exclude": [
         "src/images.ts",

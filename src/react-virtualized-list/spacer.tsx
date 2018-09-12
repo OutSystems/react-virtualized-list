@@ -1,5 +1,4 @@
 import * as React from "react";
-import * as ReactDOM from "react-dom";
 import { ScrollExtensions } from "./virtualized-scroll-viewer-extensions";
 
 
@@ -26,13 +25,10 @@ export class Spacer extends React.Component<SpacerProps, {}>{
             style.width = dimension + PIXEL_UNITS;
             style.height = FILL_SPACE;
         } else if (scrollDirection === ScrollExtensions.ScrollDirection.Vertical) {
-            style.height = dimension + PIXEL_UNITS;            
+            style.height = dimension + PIXEL_UNITS;
             style.width = FILL_SPACE;
         }
-        
-        
-        // style.backgroundColor = "#f0f";
-        
+
         return React.DOM.script({ key: childKey, style: style });
     }
 }
