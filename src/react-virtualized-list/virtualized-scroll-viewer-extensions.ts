@@ -43,7 +43,7 @@ export module ScrollExtensions {
                 // some elements are special and should not be scrollable
                 if (!element.hasAttribute(NON_SCROLLABLE_ELEMENT_ATRIBUTE)) {
                     return {
-                        scrollHost: element === document.documentElement ? element : window,
+                        scrollHost: element === document.documentElement ? window : element,
                         scrollDirection: OVERFLOW_REGEX.test(elementComputedStyle.overflowY) ? ScrollDirection.Vertical : 
                                                                                                ScrollDirection.Horizontal,
                     };
