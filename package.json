@@ -1,0 +1,36 @@
+{
+  "name": "@outsystems/react-virtualized-list",
+  "version": "1.0.0",
+  "description": "Virtualization technique applied to a react list component",
+  "scripts": {
+    "rebuild": "npm run clean && npm install && npm run build",
+    "build": "tsc",
+    "dist": "webpack -p",
+    "lint": "tslint -p tslint.json",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rm -rf ./nodes_modules ./output"
+  },
+  "dependencies": {
+    "@types/react": "16.8.3",
+    "@types/react-addons-css-transition-group": "15.0.5",
+    "@types/react-addons-transition-group": "15.0.4",
+    "@types/react-dom": "16.8.0",
+    "react": "16.8.1",
+    "react-dom": "16.8.1",
+    "requirejs": "2.3.6",
+    "ts-loader": "6.2.1",
+    "webpack": "4.41.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OutSystems/react-virtualized-list.git"
+  },
+  "bugs": {
+    "url": "https://github.com/OutSystems/react-virtualized-list/issues"
+  },
+  "homepage": "https://github.com/OutSystems/react-virtualized-list#readme",
+  "devDependencies": {
+    "tslint": "5.11.0",
+    "typescript": "3.7.3"
+  }
+}
