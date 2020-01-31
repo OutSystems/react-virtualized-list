@@ -1,4 +1,4 @@
-export var Images = [
+export let Images = [
 "http://24.media.tumblr.com/tumblr_m3sdvsBdJU1qzzim1o1_500.jpg",
 "http://25.media.tumblr.com/tumblr_m1zlwpDjAh1qze0hyo1_1280.jpg",
 "http://25.media.tumblr.com/tumblr_m1wlprhmJY1qjmz65o1_500.gif",
@@ -48,5 +48,5 @@ export var Images = [
 "http://29.media.tumblr.com/tumblr_lrftlutgUt1qgn992o1_500.jpg",
 "http://25.media.tumblr.com/tumblr_m109jwrekN1qjc1a7o1_500.jpg",
 "http://24.media.tumblr.com/tumblr_m4mi59MLm91qz5l2xo1_500.png",
-"http://24.media.tumblr.com/tumblr_m4r5g38v4z1qh66wqo1_1280.jpg"
+"http://24.media.tumblr.com/tumblr_m4r5g38v4z1qh66wqo1_1280.jpg",
 ];

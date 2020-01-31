@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { ObjectExtensions } from "virtualized-scroll-viewer-extensions";
+import { ObjectExtensions } from "./virtualized-scroll-viewer-extensions";
+import ReactTransitionGroup = require("react-addons-transition-group");
 
 const ANIMATION_APPEAR = "-appear";
 const ANIMATION_ENTER = "-enter";
@@ -10,8 +11,7 @@ const ANIMATION_ACTIVE = "-active";
 const TICK = 17; // same as CSS Transition group
 
 type TransitionCallback = (element: HTMLElement) => void;
-
-export interface IAnimatedAttributes extends React.HTMLProps<any>, React.TransitionGroupProps {
+export interface IAnimatedAttributes extends React.TransitionGroupProps {
     shouldSuspendAnimations?: () => boolean;
     transitionName?: string;
     onEnter?: () => void;
@@ -37,7 +37,7 @@ export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {
             onEnter: this.props.onEnter,
             onEnterStarted: this.props.onEnterStarted,
             onLeave: this.props.onLeave,
-            onLeaveStarted: this.props.onLeaveStarted
+            onLeaveStarted: this.props.onLeaveStarted,
         };
         return React.createElement(
             this.getAnimatedItem(), 
@@ -47,7 +47,7 @@ export class AnimatedGroup extends React.Component<IAnimatedAttributes, any> {
 
     public render(): any {
         return React.createElement(
-            React.addons.TransitionGroup,
+            ReactTransitionGroup,
             ObjectExtensions.assign({}, this.props, { childFactory: this.wrapChild.bind(this) }), 
             this.props.children);
     }
@@ -167,6 +167,6 @@ export class AnimatedItem extends React.Component<IAnimatedAttributes, any> {
     }
 
     public render(): JSX.Element {
-        return React.Children.only(this.props.children);
+        return React.Children.only(<JSX.Element>this.props.children);
     }
 }

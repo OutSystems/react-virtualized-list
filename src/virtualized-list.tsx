@@ -1,7 +1,7 @@
 import * as React from "react";
-import { VirtualizedScrollViewer } from "virtualized-scroll-viewer";
-import { IAnimatedAttributes } from "animated-group";
-import { AnimatedSizeGroup } from "animated-size-group";
+import { VirtualizedScrollViewer } from "./virtualized-scroll-viewer";
+import { IAnimatedAttributes } from "./animated-group";
+import { AnimatedSizeGroup } from "./animated-size-group";
 
 const SCROLL_VIEWER_COMPONENT_REF = "scrollViewer";
 

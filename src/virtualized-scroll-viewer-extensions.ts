@@ -5,7 +5,7 @@ export module ScrollExtensions {
 
     export enum ScrollDirection {
         Horizontal,
-        Vertical
+        Vertical,
     }
 
     export interface IScrollHostInfo {

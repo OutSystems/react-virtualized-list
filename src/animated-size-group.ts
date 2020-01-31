@@ -1,4 +1,5 @@
-import { AnimatedItem, AnimatedGroup, IAnimatedAttributes } from "animated-group";
+import { AnimatedItem, AnimatedGroup, IAnimatedAttributes } from "./animated-group";
+import * as React from "react";
 
 const PIXELS_UNIT = "px";
 

@@ -1,13 +1,16 @@
 {
     "compilerOptions": {
         "module": "amd",
+        "moduleResolution": "node",
         "noImplicitAny": true,
         "removeComments": true,
         "preserveConstEnums": true,
-        "sourceMap": false,
-        "outFile": "bin/index.js",
+        "sourceMap": true,
+        "outDir": "./output",
 		"target": "es5",
-		"jsx": "react",
+        "jsx": "react",
         "experimentalDecorators": true
-    }
+    },
+    "include": ["./src/*"],
+    "exclude": ["node_modules"]
 }

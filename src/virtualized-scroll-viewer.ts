@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { ScrollExtensions } from "virtualized-scroll-viewer-extensions";
+import { ScrollExtensions } from "./virtualized-scroll-viewer-extensions";
 
 function insideiOSWebView(): boolean {
     return !(<any> navigator).standalone && /(iPad)|(iPhone)/i.test(navigator.userAgent) && !/safari/i.test(navigator.userAgent);    
@@ -40,6 +40,14 @@ export interface IScrollViewerState {
     effectiveScrollOffset: number; // stores the scroll offset of the scroll host
 }
 
+interface VirtualizedScrollViewerCSSProperties extends React.CSSProperties {
+    backgroundImage?: any,
+    backgroundRepeat?: any,
+    display?: string,
+    height?: any,
+    width?: any
+}
+
 type Rect = {
     width: number,
     height: number,
@@ -54,11 +62,11 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
     private scrollHandler: () => void;
     private scrollHostInfo: ScrollExtensions.IScrollHostInfo;
     private scrollDirection: ScrollExtensions.ScrollDirection = ScrollExtensions.ScrollDirection.Vertical;
-    private hasPendingPropertiesUpdate: boolean = false;
+    private hasPendingPropertiesUpdate = false;
     private pendingScrollAsyncUpdateHandle: number;
     private itemsContainer: HTMLElement;
-    private isScrollOngoing: boolean = false; // true when rendering to due scroll changes
-    private isComponentInitialized: boolean = false;
+    private isScrollOngoing = false; // true when rendering to due scroll changes
+    private isComponentInitialized = false;
     private setPendingScroll: () => void;
     private itemsPlaceholdersImageDataUri: string;
 
@@ -306,11 +314,13 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
      */
     private renderSpacer(key: string, dimension: number, averageItemSize: number): JSX.Element {
         const FILL_SPACE = "100%";
-        let style: React.CSSProperties = {
+        let style: VirtualizedScrollViewerCSSProperties = {
             display: FLEXBOX_DISPLAY,
         };
+
         let backgroundWidth = 0;
         let backgroundHeight = 0;
+
         if (this.scrollDirection === ScrollExtensions.ScrollDirection.Horizontal) {
             style.width = Math.round(dimension) + PIXEL_UNITS;
             style.height = FILL_SPACE;
@@ -324,7 +334,7 @@ export class VirtualizedScrollViewer extends React.Component<IScrollViewerProper
         style.backgroundImage = `url(${this.getItemsPlaceholdersImage(backgroundWidth, backgroundHeight)})`;
         style.backgroundRepeat = "repeat";
         
-        return React.DOM.script({ key: key, style: style });
+        return React.createElement("script", { key: key, style: style });
     }
     
     public render(): JSX.Element {

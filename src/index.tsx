@@ -1,33 +1,33 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { VirtualizedList } from "virtualized-list";
-import { Images } from "images";
+import { VirtualizedList } from "./virtualized-list";
+import { Images } from "./images";
 
 class App extends React.Component<{}, { items: number, pageBufferSize: number }> {
     
-    constructor() {
-        super();
+    constructor(props: any) {
+        super(props);
         this.state = {
             items: 100,
-            pageBufferSize: 4
+            pageBufferSize: 4,
         };
     }
     
     private refresh() {
         this.setState({ 
-            items: parseInt((this.refs["itemsCount"] as HTMLInputElement).value),
-            pageBufferSize: parseInt((this.refs["pageBufferSize"] as HTMLInputElement).value)
+            items: parseInt((this.refs.itemsCount as HTMLInputElement).value),
+            pageBufferSize: parseInt((this.refs.pageBufferSize as HTMLInputElement).value),
         });
     }
     
     private setScroll() {
-        let offset = parseInt( (this.refs["scrollOffset"] as HTMLInputElement).value);
-        (this.refs["list"] as VirtualizedList).scrollToOffset(offset);
+        let offset = parseInt( (this.refs.scrollOffset as HTMLInputElement).value);
+        (this.refs.list as VirtualizedList).scrollToOffset(offset);
     }
 
     private scrollToIndex() {
-        let offset = parseInt( (this.refs["scrollToIndex"] as HTMLInputElement).value);
-        (this.refs["list"] as VirtualizedList).scrollToIndex(offset);
+        let offset = parseInt( (this.refs.scrollToIndex as HTMLInputElement).value);
+        (this.refs.list as VirtualizedList).scrollToIndex(offset);
     }
     
     public render() {
