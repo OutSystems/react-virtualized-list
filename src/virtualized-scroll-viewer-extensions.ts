@@ -1,5 +1,5 @@
 
-export module ScrollExtensions {
+export namespace ScrollExtensions {
     const OVERFLOW_REGEX: RegExp = /(auto|scroll)/;
     const NON_SCROLLABLE_ELEMENT_ATRIBUTE = "data-not-scrollable";
 
@@ -12,9 +12,9 @@ export module ScrollExtensions {
         scrollHost: Element | Window;
         scrollDirection: ScrollDirection;
     }
-    
+
     export type Rect = { x: number, y: number, height: number, width: number };
-    
+
     export interface IScrollInfo {
         scrollHost: Element | Window;
         viewport: Rect;
@@ -34,17 +34,17 @@ export module ScrollExtensions {
         excludeStaticParent = excludeStaticParent || elementComputedStyle.position === "absolute";
 
         if (!excludeStaticParent || elementComputedStyle.position !== "static") {
-            let isOverFlow = OVERFLOW_REGEX.test(elementComputedStyle.overflow + 
-                             elementComputedStyle.overflowY + 
-                             elementComputedStyle.overflowX);
+            let isOverFlow = OVERFLOW_REGEX.test(elementComputedStyle.overflow +
+                elementComputedStyle.overflowY +
+                elementComputedStyle.overflowX);
 
             if (isOverFlow) {
                 // some elements are special and should not be scrollable
                 if (!element.hasAttribute(NON_SCROLLABLE_ELEMENT_ATRIBUTE)) {
                     return {
                         scrollHost: element,
-                        scrollDirection: OVERFLOW_REGEX.test(elementComputedStyle.overflowY) ? ScrollDirection.Vertical : 
-                                                                                               ScrollDirection.Horizontal,
+                        scrollDirection: OVERFLOW_REGEX.test(elementComputedStyle.overflowY) ? ScrollDirection.Vertical :
+                            ScrollDirection.Horizontal,
                     };
                 }
             }
@@ -52,51 +52,51 @@ export module ScrollExtensions {
 
         return getScrollHostInfo(element.parentElement, excludeStaticParent);
     }
-    
+
     export function getScrollInfo(scrollHost: Element | Window): IScrollInfo {
         if (scrollHost instanceof Window) {
             return {
                 scrollHost: scrollHost,
-                scroll: { 
-                    x: document.body.scrollLeft, 
+                scroll: {
+                    x: document.body.scrollLeft,
                     y: document.body.scrollTop,
-                    height: document.body.scrollHeight, 
+                    height: document.body.scrollHeight,
                     width: document.body.scrollWidth,
                 },
-                viewport: { 
-                    x: 0, 
-                    y: 0, 
-                    height: scrollHost.innerHeight, 
+                viewport: {
+                    x: 0,
+                    y: 0,
+                    height: scrollHost.innerHeight,
                     width: scrollHost.innerWidth,
                 },
             };
         } else if (scrollHost instanceof HTMLElement) {
             return {
                 scrollHost: scrollHost,
-                scroll: { 
-                    x: scrollHost.scrollLeft, 
-                    y: scrollHost.scrollTop, 
-                    height: scrollHost.scrollHeight, 
+                scroll: {
+                    x: scrollHost.scrollLeft,
+                    y: scrollHost.scrollTop,
+                    height: scrollHost.scrollHeight,
                     width: scrollHost.scrollWidth,
                 },
-                viewport: { 
-                    x: 0, 
-                    y: 0, 
-                    height: scrollHost.clientHeight, 
+                viewport: {
+                    x: 0,
+                    y: 0,
+                    height: scrollHost.clientHeight,
                     width: scrollHost.clientWidth,
                 },
             };
         }
-        
+
         return null;
     }
-    
-    export function setScrollOffset(scrollHost: Element | Window, x?: number, y?: number, increment = false): void {
+
+    export function setScrollOffset(scrollHost: Element | Window, x?: number, y?: number, increment: boolean = false): void {
         if (scrollHost instanceof Window) {
             scrollHost = document.body;
         }
-        
-        let scrollHostElement = <Element> scrollHost;
+
+        let scrollHostElement = scrollHost as Element;
         if (!isNaN(y)) {
             if (increment) {
                 y += scrollHostElement.scrollTop;
@@ -112,8 +112,8 @@ export module ScrollExtensions {
     }
 }
 
-export module ObjectExtensions {
-    export function assign(target: any, ...sources: any[]): Object {
+export namespace ObjectExtensions {
+    export function assign(target: any, ...sources: any[]): object {
         if (target == null) {
             throw new TypeError("Cannot convert undefined or null to object");
         }
